@@ -949,7 +949,7 @@ install_main() {
     chmod 777 ${jukebox_dir}/settings/version
 
     # Remove RPi.GPIO, if still installed - see https://github.com/MiczFlor/RPi-Jukebox-RFID/issues/2313
-    sudo python3 -m pip uninstall rpi-gpio
+    sudo python3 -m pip uninstall -y -q rpi-gpio
 
     # Install required spotify packages
     if [ "${SPOTinstall}" == "YES" ]; then
