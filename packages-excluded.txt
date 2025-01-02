@@ -1,0 +1,5 @@
+# Remove exluded libs, if installed - see https://github.com/MiczFlor/RPi-Jukebox-RFID/pull/2469
+# Define packages for apt-get. These must be removed with
+# 'sed 's/#.*//g' packages.txt | xargs sudo apt-get remove'
+
+python3-rpi.gpio

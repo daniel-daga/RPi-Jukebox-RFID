@@ -333,7 +333,7 @@ call_with_args_from_file() {
     local package_file="$1"
     shift
 
-    sed 's/.*#egg=//g' ${package_file} | sed -E 's/(#|=|>|<).*//g' | xargs "$@"
+    sed 's/.*#egg=//g' ${package_file} | sed -E 's/(#|=|>|<|;).*//g' | xargs "$@"
 }
 
 verify_apt_packages() {
@@ -344,7 +344,9 @@ verify_apt_packages() {
     local packages_autohotspot_dhcpcd=$(call_with_args_from_file "${jukebox_dir}"/packages-autohotspot_dhcpcd.txt echo)
     local packages_autohotspot_NetworkManager=$(call_with_args_from_file "${jukebox_dir}"/packages-autohotspot_NetworkManager.txt echo)
 
-    printf "\nTESTING installed packages...\n\n"
+    local packages_excluded=$(call_with_args_from_file "${jukebox_dir}"/packages-excluded.txt echo)
+
+    printf "\nTESTING apt packages...\n\n"
 
     # also check for spotify packages if it has been installed
     if [[ "${SPOTinstall}" == "YES" ]]; then
@@ -378,6 +380,17 @@ verify_apt_packages() {
         fi
         ((tests++))
     done
+
+    for package in ${packages_excluded}
+    do
+        if [[ $(echo "${apt_list_installed}" | grep -i "${package}.*installed") ]]; then
+            echo "  ERROR: ${package} is installed (excluded)"
+            ((failed_tests++))
+        else
+            echo "  ${package} is not installed (excluded)"
+        fi
+        ((tests++))
+    done
 }
 
 verify_pip_packages() {
@@ -388,7 +401,9 @@ verify_pip_packages() {
     local modules_rc522=$(call_with_args_from_file "${jukebox_dir}"/components/rfid-reader/RC522/requirements.txt echo)
     local deviceName="${jukebox_dir}"/scripts/deviceName.txt
 
-    printf "\nTESTING installed pip modules...\n\n"
+    local modules_excluded=$(call_with_args_from_file "${jukebox_dir}"/requirements-excluded.txt echo)
+
+    printf "\nTESTING pip modules...\n\n"
 
     # also check for spotify pip modules if it has been installed
     if [[ "${SPOTinstall}" == "YES" ]]; then
@@ -415,8 +430,19 @@ verify_pip_packages() {
         if [[ $(echo "${pip_list_installed}" | grep -i "${module}") ]]; then
             echo "  ${module} is installed"
         else
-            echo "  ERROR: pip module ${module} is not installed"
+            echo "  ERROR: ${module} is not installed"
             ((failed_tests++))
+        fi
+        ((tests++))
+    done
+
+    for module in ${modules_excluded}
+    do
+        if [[ $(echo "${pip_list_installed}" | grep -i "${module}") ]]; then
+            echo "  ERROR: ${module} is installed (excluded)"
+            ((failed_tests++))
+        else
+            echo "  ${module} is not installed (excluded)"
         fi
         ((tests++))
     done
