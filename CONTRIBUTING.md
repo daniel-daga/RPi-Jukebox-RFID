@@ -93,6 +93,8 @@ If the code change results in a test failure, we will make our best effort to co
 
 * All code has to run under the stable and legacy version of Raspberry Pi OS (please check if currently even an older version is still supported).
 * For GPIO all code should work with **RPi.GPIO**. gpiozero is currently not intended to use.
+    > [!IMPORTANT]
+    > The original `RPi.GPIO` packages is currently not compatible with the 6.6 kernel (since bookworm). Therefore the lib `rpi-lgpio` is used as a replacement, which is api compliant. `RPi.GPIO` must not be installed directly or as a dependency as this breaks GPIO functionality (see `requirements-excluded`)!
 
 ### Additional Resources
 
