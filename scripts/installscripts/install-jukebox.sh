@@ -919,7 +919,7 @@ install_main() {
     source "${jukebox_dir}"/scripts/helperscripts/inc.helper.sh
     source "${jukebox_dir}"/scripts/helperscripts/inc.networkHelper.sh
 
-    # Remove exluded libs, if installed - see https://github.com/MiczFlor/RPi-Jukebox-RFID/pull/2469
+    # Remove excluded libs, if installed - see https://github.com/MiczFlor/RPi-Jukebox-RFID/pull/2469
     call_with_args_from_file "${jukebox_dir}"/packages-excluded.txt ${apt_get} ${allow_downgrades} remove
 
     # some packages are only available on raspberry pi's but not on test docker containers running on x86_64 machines
@@ -954,7 +954,7 @@ install_main() {
     echo "${VERSION_NO} - ${COMMIT_NO} - ${USED_BRANCH}" > ${jukebox_dir}/settings/version
     chmod 777 ${jukebox_dir}/settings/version
 
-    # Remove exluded libs, if installed - see https://github.com/MiczFlor/RPi-Jukebox-RFID/pull/2469
+    # Remove excluded libs, if installed - see https://github.com/MiczFlor/RPi-Jukebox-RFID/pull/2469
     ${pip_uninstall} -r "${jukebox_dir}"/requirements-excluded.txt
 
     # Install required spotify packages
