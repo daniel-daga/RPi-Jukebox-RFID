@@ -1,5 +1,10 @@
 # GPIO CONTROL
 
+> [!IMPORTANT]
+> Since v2.9.0 the original `RPi.GPIO` library was replaced with `rpi-lgpio` to support the GPIO access in newer OS versions (>= kernel 6.6).
+> This new library is api compliant to the old one, but behaves differently in some aspects (see [rpi-lgpio differences](https://rpi-lgpio.readthedocs.io/en/latest/differences.html)).
+> Especially the `Debounce` difference changes the behavior of the `bouncetime` property! The actions are not triggered immediately anymore, but after the signal has been stable for the specified time, causing a delay. This also has impact to the usage of `hold_time` and `antibouncehack`!
+
 This service enables the control of different GPIO input & output devices for controlling the Phoniebox.
 It uses to a configuration file to configure the active devices.
 
@@ -74,7 +79,7 @@ However, a button has more parameters than these. In the following comprehensive
   
   Holding the button even longer than `hold_time` will cause no further action unless you are in the `Repeat` or `SecondFuncRepeat` mode.
   
-* **hold_time**: Reference time for this buttons `hold_mode` feature in seconds. Default is `0.3`. This setting is ignored if `hold_mode` is unset or `None`
+* **hold_time**: Reference time for this buttons `hold_mode` feature in seconds. Default is `0.3`. This setting is ignored if `hold_mode` is unset or `None`. Attention: `hold_time` is running **after** the action was triggered, so the total time will add up with `bouncetime`.
 * **functionCall2**: Secondary function, default is `None`. This setting is ignored unless `hold_mode` is set to `SecondFunc` or `SecondFuncRepeat`.
 * **functionCall2Args**: Arguments for secondary function, default is `None`. Arguments are ignored, if `functionCall2` does not take any.
 * **pull_up_down**: Configures the internal Pull up/down resistors. Valid settings:
@@ -85,7 +90,7 @@ However, a button has more parameters than these. In the following comprehensive
   * `falling` (Default). Triggers if the GPIO voltage goes down.
   * `rising`. Triggers only if the GPIO voltage goes up.
   * `both`. Triggers in both cases.
-* **bouncetime**: This is a setting of the GPIO library to limit bouncing effects during button usage. Default is `500` ms.
+* **bouncetime**: This is a setting of the GPIO library to limit bouncing effects during button usage. The action is only triggered after the signal has been stable for the defined time. Default is `500` ms.
 * **antibouncehack**: Despite the integrated bounce reduction of the GPIO library some users may notice false triggers of their buttons (e.g. unrequested / double actions when releasing the button). If you encounter such problems, try setting this to `True` to activate an additional countermeasure.
 
 > [!NOTE]
