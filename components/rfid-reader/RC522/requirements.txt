@@ -1,4 +1,8 @@
 # RC522 related requirements
-# You need to install these with `sudo python3 -m pip install --upgrade --force-reinstall -q -r requirements.txt`
+# You need to install these with `sudo python3 -m pip install --upgrade --force-reinstall --no-deps -q -r requirements.txt`
 
+#pi-rc522 has RPi.GPIO as a dependency which is broken since kernel 6.6.
+#Skip dependencies whith --no-deps and use the rpi-lgpio lib as a replacement, which should already be installed from the main installation.
+
+spidev # dep of pi-rc522
 pi-rc522==2.3.0

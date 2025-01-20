@@ -35,6 +35,9 @@ JUKEBOX_BACKUP_DIR="${HOME_DIR}/BACKUP"
 
 # Get the Raspberry Pi OS codename (e.g. buster, bullseye, ...)
 OS_CODENAME="$( . /etc/os-release; printf '%s\n' "$VERSION_CODENAME"; )"
+# Get the Raspberry Pi OS version id (e.g. 11, 12, ...)
+OS_VERSION_ID="$( . /etc/os-release; printf '%s\n' "$VERSION_ID"; )"
+
 
 WIFI_INTERFACE="wlan0"
 
@@ -831,6 +834,7 @@ install_main() {
     local apt_get="sudo apt-get -qq --yes"
     local allow_downgrades="--allow-downgrades --allow-remove-essential --allow-change-held-packages"
     local pip_install="sudo python3 -m pip install --upgrade --force-reinstall -q"
+    local pip_uninstall="sudo python3 -m pip uninstall -y -q"
 
     clear
 
@@ -909,6 +913,8 @@ install_main() {
     source "${jukebox_dir}"/scripts/helperscripts/inc.helper.sh
     source "${jukebox_dir}"/scripts/helperscripts/inc.networkHelper.sh
 
+    # Remove excluded libs, if installed - see https://github.com/MiczFlor/RPi-Jukebox-RFID/pull/2469
+    call_with_args_from_file "${jukebox_dir}"/packages-excluded.txt ${apt_get} ${allow_downgrades} remove
 
     # some packages are only available on raspberry pi's but not on test docker containers running on x86_64 machines
     if [[ $(uname -m) =~ ^armv.+$ ]]; then
@@ -942,6 +948,9 @@ install_main() {
     echo "${VERSION_NO} - ${COMMIT_NO} - ${USED_BRANCH}" > ${jukebox_dir}/settings/version
     chmod 777 ${jukebox_dir}/settings/version
 
+    # Remove excluded libs, if installed - see https://github.com/MiczFlor/RPi-Jukebox-RFID/pull/2469
+    ${pip_uninstall} -r "${jukebox_dir}"/requirements-excluded.txt
+
     # Install required spotify packages
     if [ "${SPOTinstall}" == "YES" ]; then
         echo "Installing dependencies for Spotify support..."
@@ -973,9 +982,18 @@ install_main() {
         sudo chmod 440 "${sudoers_mopidy}"
     fi
 
+    # prepare lgpio build for bullseye as the binaries are broken
+    local pip_install_options=""
+    if [ "${OS_VERSION_ID}" -le "11" ]; then
+        ${apt_get} install swig unzip
+        mkdir -p tmp && cd tmp && wget -q http://abyz.me.uk/lg/lg.zip && unzip lg.zip > /dev/null && cd lg && make > /dev/null && sudo make install > /dev/null
+        cd "${HOME_DIR}" && sudo rm -rf tmp > /dev/null
+        pip_install_options="--no-binary=lgpio"
+    fi
+
     # Install more required packages
     echo "Installing additional Python packages..."
-    ${pip_install} -r "${jukebox_dir}"/requirements.txt
+    ${pip_install} -r "${jukebox_dir}"/requirements.txt ${pip_install_options}
 
     samba_config
 
