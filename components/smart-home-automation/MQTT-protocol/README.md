@@ -153,11 +153,23 @@ First step: copy files to destination locations:
 # First copy the daemon script and service config file to the correct directory:
 sudo cp /home/pi/RPi-Jukebox-RFID/components/smart-home-automation/MQTT-protocol/daemon_mqtt_client.py /home/pi/RPi-Jukebox-RFID/scripts/
 sudo cp /home/pi/RPi-Jukebox-RFID/components/smart-home-automation/MQTT-protocol/phoniebox-mqtt-client.service-default.sample /etc/systemd/system/phoniebox-mqtt-client.service
+# set the python script as executable, otherwise the service won't start
+sudo chmod +x /home/pi/RPi-Jukebox-RFID/scripts/daemon_mqtt_client.py
 # make sure the file exists
 touch /home/pi/RPi-Jukebox-RFID/settings/Latest_RFID
 ~~~
 
-Now edit the `SETTINGS` section in `/home/pi/RPi-Jukebox-RFID/scripts/daemon_mqtt_client.py` to match your environment (MQTT connection details etc.). Now continue and activate the service.
+Now edit the `SETTINGS` section in `/home/pi/RPi-Jukebox-RFID/scripts/daemon_mqtt_client.py` to match your environment (MQTT connection details etc.). 
+
+If you don't use authentification via certificates (either by user/passwords-credentials or no authentification at all), leave the corresponding cert parameters empty, like so:
+
+~~~
+"mqttCA": "", # path to server certificate for certificate-based authentication
+"mqttCert": "", # path to client certificate for certificate-based authentication
+"mqttKey": "", # path to client keyfile for certificate-based authentication
+~~~
+
+Now continue and activate the service.
 
 ~~~bash
 # Now systemd has to be notified that there's a new service file:
