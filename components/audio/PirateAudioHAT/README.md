@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > The display of the HATs currently only work with the 'spotify' edition, not with 'classic'!
-> See [here](https://github.com/MiczFlor/RPi-Jukebox-RFID/issues/1109)
+> See issue [#1109](https://github.com/MiczFlor/RPi-Jukebox-RFID/issues/1109).
 
 These instructions are for the [Pimoroni PirateAudio HATs](https://shop.pimoroni.com/collections/audio?q=pirate%20audio)
 
