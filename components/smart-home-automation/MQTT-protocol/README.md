@@ -3,7 +3,7 @@
 
 This module will integrate Phoniebox into a Smart Home environment and make it remotely controllable. It can be read out and controlled through MQTT which is widely supported in Smart Home environments. Several clients can connect to a MQTT server and exchange messages there just like in a chat room. Every MQTT client will publish messages and will also listen for messages. To make your Smart Home tool of choice talk to Phoniebox and vice versa both need to connect to a MQTT server that mostly comes with the Smart Home environment (e.g. [openHAB](https://openhab.org) comes with [Mosquitto](http://mosquitto.org/)). Phoniebox will automatically publish current status information periodically and in parallel listen for command messages from any MQTT client. Please refer to your Smart Home tool's documentation on how to setup MQTT for it. It will need to be able to listen for messages and also send messages to Phoniebox' "chat room" (=topic in MQTT terms).
 
-# Use Cases
+## Use Cases
 
 * let your Smart Home control Phoniebox based on time schedules
   * disable wifi in the evening when Phoniebox is used as a sleeping device
@@ -15,7 +15,7 @@ This module will integrate Phoniebox into a Smart Home environment and make it r
   * arrange terms with your kid how long the Phoniebox can be used (e.g. max. 2h per day)
   * monitor if your kid complies with those terms or enforce them if need be
 
-# How it works
+## How it works
 
 Phoniebox' MQTT client connects to the MQTT server that is defined in the `SETTINGS` section of the script itself. It is able to connect by authenticating...
 
@@ -39,7 +39,7 @@ Phoniebox' MQTT client will do the following things:
 5. listen for attribute requests on `phoniebox/get/$attribute`
 6. listen for commands on `phoniebox/cmd/$command` (if a command needs a parameter it has to be provided via payload)
 
-## Topic: phoniebox/event/$event
+### Topic: phoniebox/event/$event
 
 This is a read-only topic. The following events trigger immediate messages through this topic:
 
@@ -47,11 +47,11 @@ This is a read-only topic. The following events trigger immediate messages throu
 
 Use these topics to get notified of time-critical events right away rather than having to wait for the periodic send of all attributes or requesting an attribute through the get topic. Currently the only event triggering a message is the "card_swiped" event with the obvious use-case of letting your smart home react upon swiped cards. These cards needn't be configured in Phoniebox as the MQTT daemon will just relay any swiped card to the MQTT server. So it's possible to have a "dim lights" card that will not trigger any Phoniebox action but is picked up by your smart home to dim the lights.
 
-## Topic: phoniebox/get/$attribute
+### Topic: phoniebox/get/$attribute
 
 MQTT clients can (additionally to the periodic updates) request an attribute of Phoniebox. Sending an empty payload to `phoniebox/get/volume` will trigger Phoniebox' MQTT client to fetch the current volume from MPD and send the result to `phoniebox/attribute/volume`.
 
-### Possible attributes
+#### Possible attributes
 
 * volume
 * mute
@@ -80,15 +80,15 @@ MQTT clients can (additionally to the periodic updates) request an attribute of 
 * throttling
 * temperature
 
-### Help
+#### Help
 
 Sending empty payload to `phoniebox/get/help` will be responded by a list of all possible attributes to `phoniebox/available_attributes`
 
-## Topic: phoniebox/cmd/$command
+### Topic: phoniebox/cmd/$command
 
 MQTT clients can send commands to Phoniebox. Sending an empty payload to `phoniebox/cmd/volumeup` will trigger Phoniebox' MQTT client to execute that command. If the command needs a parameter it has to be provided in the payload (e.g. for `setmaxvolume` a payload with the maximum volume is required).
 
-### Possible commands
+#### Possible commands
 
 * volumeup
 * volumedown
@@ -107,7 +107,7 @@ MQTT clients can send commands to Phoniebox. Sending an empty payload to `phonie
 * reboot
 * disablewifi
 
-### Possible commands (that require a parameter!)
+#### Possible commands (that require a parameter!)
 
 * setvolume [0-100]
 * setvolstep [0-100]
@@ -123,11 +123,11 @@ MQTT clients can send commands to Phoniebox. Sending an empty payload to `phonie
 * playfolder [folder name (not path)]
 * playfolderrecursive [folder name (not path)]
 
-### Help
+#### Help
 
 Sending empty payload to `phoniebox/cmd/help` will be responded by a list of all possible commands to `phoniebox/available_commands` and `phoniebox/available_commands_with_params`
 
-# Installation
+## Installation
 
 Install missing python packages for MQTT:
 
@@ -141,7 +141,7 @@ All relevant files can be found in the folder:
 components/smart-home-automation/MQTT-protocol/
 ~~~
 
-## Auto-Starting the daemon at bootup
+### Auto-Starting the daemon at bootup
 
 * The daemon is run by executing the script `daemon_mqtt_client.py` which will run in an endless loop.
 * There's a sample service file (`phoniebox-mqtt-client.service-default.sample`) that can be used to register the daemon to be run at bootup.
@@ -159,11 +159,11 @@ sudo chmod +x /home/pi/RPi-Jukebox-RFID/scripts/daemon_mqtt_client.py
 touch /home/pi/RPi-Jukebox-RFID/settings/Latest_RFID
 ~~~
 
-Now edit the `SETTINGS` section in `/home/pi/RPi-Jukebox-RFID/scripts/daemon_mqtt_client.py` to match your environment (MQTT connection details etc.). 
+Now edit the `SETTINGS` section in `/home/pi/RPi-Jukebox-RFID/scripts/daemon_mqtt_client.py` to match your environment (MQTT connection details etc.).
 
 If you don't use authentification via certificates (either by user/passwords-credentials or no authentification at all), leave the corresponding cert parameters empty, like so:
 
-~~~
+~~~text
 "mqttCA": "", # path to server certificate for certificate-based authentication
 "mqttCert": "", # path to client certificate for certificate-based authentication
 "mqttKey": "", # path to client keyfile for certificate-based authentication
