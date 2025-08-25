@@ -207,7 +207,7 @@ and changing the default volume control in another console
 $ sudo alsamixer 
 ~~~
 
-If you are experimenting with a softvol and want to get rid of it again - that is not an easy task. Most promising approach is to insert the SD-Card into a different Linux machine delete the file `/var/lib/alsa/asound.state`. This must be done from a different computer, as this file gets written during shutdown. More infos about the softvol may be found [here](https://alsa.opensrc.org/Softvol)
+If you are experimenting with a softvol and want to get rid of it again - that is not an easy task. Most promising approach is to insert the SD-Card into a different Linux machine delete the file `/var/lib/alsa/asound.state`. This must be done from a different computer, as this file gets written during shutdown. More infos about the softvol may be found in the [ALSA docs](https://alsa.opensrc.org/Softvol).
 
 ## Troubleshooting
 
