@@ -18,18 +18,21 @@ class TrackEditTest extends TestCase {
     private $sourceFolder;
     private $targetFolder;
 
-    public function __construct($name = null, array $data = [], $dataName = '') {
+   /* public function __construct($name = null, array $data = [], $dataName = '') {
         $this->sourceFolder = Files::buildPath(sys_get_temp_dir(), TrackEditTest::SOURCE_FOLDER_NAME);
         $this->targetFolder = Files::buildPath(sys_get_temp_dir(), TrackEditTest::TARGET_FOLDER_NAME);
 
         parent::__construct($name, $data, $dataName);
-    }
+    }*/
 
     public function setUp(): void {
+
+        $this->sourceFolder = Files::buildPath(sys_get_temp_dir(), TrackEditTest::SOURCE_FOLDER_NAME);
         if (!is_dir($this->sourceFolder)) {
             mkdir($this->sourceFolder);
         }
 
+        $this->targetFolder = Files::buildPath(sys_get_temp_dir(), TrackEditTest::TARGET_FOLDER_NAME);
         if(!is_dir($this->targetFolder)) {
             mkdir($this->targetFolder);
         }
