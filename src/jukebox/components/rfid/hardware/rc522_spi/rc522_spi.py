@@ -132,7 +132,8 @@ class ReaderClass(ReaderBaseClass):
 
     def read_card(self) -> str:
         # Scan for cards
-        self.device.wait_for_tag()
+        if not self.mode_legacy:
+            self.device.wait_for_tag()
         if not self._keep_running:
             return ''
         return self._read_function()
