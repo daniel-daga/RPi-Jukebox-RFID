@@ -26,7 +26,9 @@ def query_customization() -> dict:
     spi_ce = pyil.input_int("SPI CEx (CE0=GPIO8, CE1=GPIO7)?", blank=0, min=0, max=1, prompt_color=prompt_color,
                             prompt_hint=True)
 
-    pin_irq = pyil.input_int("IRQ GPIO pin (BCM numbering)?", blank=24, min=1, max=27, prompt_color=prompt_color,
+    print("\nThe IRQ GPIO pin for card detection.\n"
+          "Enter 0 for polling mode if you are tight on pins or have issues with interrupts.")
+    pin_irq = pyil.input_int("IRQ GPIO pin (BCM numbering)?", blank=0, min=0, max=27, prompt_color=prompt_color,
                              prompt_hint=True)
 
     print("\nReset GPIO pin for hardware reset. This is an optional pin.\n"
@@ -69,6 +71,15 @@ class ReaderClass(ReaderBaseClass):
             spi_bus = config.setdefault('spi_bus', None)
             spi_ce = config.setdefault('spi_ce', None)
             pin_irq = config.setdefault('pin_irq', None)
+            if pin_irq == 0:
+                pin_irq = None
+            self.pin_irq = pin_irq
+            if self.pin_irq is None:
+                self._logger.info("No IRQ pin configured - using polling mode")
+            else:
+                self._logger.info(f"Using IRQ pin {self.pin_irq} - using wait-for-card mode")
+
+
 
             if 'pin_rst' not in config:
                 self._logger.warning("No parameter 'pin_rst' found. Disabling hardware reset.")
@@ -88,7 +99,6 @@ class ReaderClass(ReaderBaseClass):
                                    pin_irq=pin_irq,
                                    antenna_gain=antenna_gain,
                                    pin_mode=GPIO.BCM)
-
     def cleanup(self):
         self.device.cleanup()
 
@@ -132,7 +142,7 @@ class ReaderClass(ReaderBaseClass):
 
     def read_card(self) -> str:
         # Scan for cards
-        if not self.mode_legacy:
+        if self.pin_irq is not None:
             self.device.wait_for_tag()
         if not self._keep_running:
             return ''
