@@ -26,8 +26,10 @@ def query_customization() -> dict:
                             prompt_hint=True)
 
     print("\nThe IRQ GPIO pin for card detection.\n"
-          "Enter 0 for polling mode if you are tight on pins or have issues with interrupts.")
-    pin_irq = pyil.input_int("IRQ GPIO pin (BCM numbering)?", blank=0, min=0, max=27, prompt_color=prompt_color,
+          "This pin is REQUIRED for interrupt-driven card detection.\n"
+          "WARNING: Polling mode (pin=0) has high CPU usage and may cause performance issues!\n"
+          "Only disable IRQ if you have serious interrupt conflicts.")
+    pin_irq = pyil.input_int("IRQ GPIO pin (BCM numbering)?", blank=24, min=0, max=27, prompt_color=prompt_color,
                              prompt_hint=True)
 
     print("\nReset GPIO pin for hardware reset. This is an optional pin.\n"
@@ -74,9 +76,11 @@ class ReaderClass(ReaderBaseClass):
                 pin_irq = None
             self.pin_irq = pin_irq
             if self.pin_irq is None:
-                self._logger.info("No IRQ pin configured - using polling mode")
+                self._logger.warning("No IRQ pin configured - using POLLING MODE")
+                self._logger.warning("WARNING: Polling mode has high CPU usage and may impact system performance!")
+                self._logger.warning("Consider using an IRQ pin for better performance")
             else:
-                self._logger.info(f"Using IRQ pin {self.pin_irq} - using wait-for-card mode")
+                self._logger.info(f"Using IRQ pin {self.pin_irq} for interrupt-driven card detection")
 
 
 
