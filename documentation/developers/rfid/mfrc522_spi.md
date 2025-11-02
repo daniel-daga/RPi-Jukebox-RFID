@@ -38,7 +38,7 @@ Mandatory IRQ pin. This can be any GPIO pin.
 
 Reset pin for hardware reset. This is an optional pin. If not used,
 
-- hardware reset will only be performed by power-on-reset. This has been tested on works fine.
+- hardware reset will only be performed by power-on-reset. This has been tested and works fine.
 - you **must** tie the reset pin of the MFRC522 board **high**!
 
 ### mode_legacy *(default=false)*
@@ -57,7 +57,8 @@ If true all card read-outs will be logged, even when card is permanently on read
 
 The following pin-out is for the default SPI Bus 0 on Raspberry Pins.
 
-*MFRC522 default wiring (spi_bus=0, spi_ce=0)*
+### MFRC522 default wiring (spi_bus=0, spi_ce=0)
+
 |Pin Board Name  |Function  |RPI GPIO  |RPI Pin  |
 |----------------|----------|----------|---------|
 |SDA             |CE        |GPIO8     |24       |
@@ -76,4 +77,6 @@ MISO.
 
 MFRC522 boards can be picked up from many places for little money.
 
-Good quality ones can be found e.g. here
+### Cards/Tags
+
+Cards or tags must support 13.56 MHz. Currently, only cards/tags of the type "NXP Mifare Classic 1k(S50)", "NXP Mifare Classic 4k(S70)" and "NXP Mifare Ultralight (C)" can be used. Type "NXP Mifare NTAG2xx" or others will not work!

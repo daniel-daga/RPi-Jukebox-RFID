@@ -1,7 +1,6 @@
 # Standard imports from python packages
 import logging
 
-import RPi.GPIO as GPIO
 import pirc522
 
 import jukebox.cfghandler
@@ -98,7 +97,8 @@ class ReaderClass(ReaderBaseClass):
                                    pin_rst=pin_rst,
                                    pin_irq=pin_irq,
                                    antenna_gain=antenna_gain,
-                                   pin_mode=GPIO.BCM)
+                                   pin_mode='BCM')
+
     def cleanup(self):
         self.device.cleanup()
 
