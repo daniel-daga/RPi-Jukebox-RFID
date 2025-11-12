@@ -82,8 +82,6 @@ class ReaderClass(ReaderBaseClass):
             else:
                 self._logger.info(f"Using IRQ pin {self.pin_irq} for interrupt-driven card detection")
 
-
-
             if 'pin_rst' not in config:
                 self._logger.warning("No parameter 'pin_rst' found. Disabling hardware reset.")
             pin_rst = config.setdefault('pin_rst', 0)
