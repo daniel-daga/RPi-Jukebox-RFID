@@ -7,13 +7,34 @@
 
 Before you can install the Phoniebox software, you need to prepare your Raspberry Pi.
 
+This instruction uses the official [Raspberry Pi Imager](https://www.raspberrypi.com/software/). We recommend using the latest [**Legacy Lite**](https://www.raspberrypi.org/software/operating-systems/#raspberry-pi-os-legacy) release image.
+
+### For Raspberry Pi Imager Version >= 2.0.0
+
 1. Connect a Micro SD card to your computer (preferable an SD card with high read throughput)
-2. Download the [Raspberry Pi Imager](https://www.raspberrypi.com/software/) and run it
-3. Click on "Raspberry Pi Device" and select "No filtering"
-4. As operating system select **Raspberry Pi OS (other)** and then **Raspberry Pi OS Lite (Legacy, 32-bit)** (no desktop environment). *64-bit is currently not supported*.
-    * For Pi 4 and newer also check [this](#workaround-for-64-bit-kernels-pi-4-and-newer).
-5. Select your Micro SD card (your card will be formatted)
-6. After you click `Next`, a prompt will ask you if you like to customize the OS settings
+1. Start the Raspberry Pi Imager
+1. Model: select "No filtering"
+1. OS: select **Raspberry Pi OS (other)** and then **Raspberry Pi OS (Legacy, 32-bit) Lite** (no desktop environment).
+1. Storage: Select your Micro SD card (your card will be formatted)
+1. Customize:
+    * Hostname: choose hostname for the network (e.g. "phoniebox")
+    * Localization: choose acording to your location
+    * User: choose a username and a password
+    * Wifi: provide your wifi settings
+    * Remote: enable SSH with "Use password authentication"
+1. Click `Write`
+1. Confirm the next warning about erasing the SD card with `Yes`
+1. Wait for the imaging process to be finished (it'll take a few minutes)
+1. Plug the SD into your Pi and optionally connect keyboard, monitor and mouse.
+
+### For Raspberry Pi Imager Version < 2.0.0
+
+1. Connect a Micro SD card to your computer (preferable an SD card with high read throughput)
+1. Start the Raspberry Pi Imager
+1. Click on "Raspberry Pi Device" and select "No filtering"
+1. As operating system select **Raspberry Pi OS (other)** and then **Raspberry Pi OS (Legacy, 32-bit) Lite** (no desktop environment).
+1. Select your Micro SD card (your card will be formatted)
+1. After you click `Next`, a prompt will ask you if you like to customize the OS settings
     * Click `Edit Settings`
     * Switch to the `General` tab
         * Provide a hostname. (When on Mac, you will be able to use it to connect via SSH)
@@ -23,9 +44,10 @@ Before you can install the Phoniebox software, you need to prepare your Raspberr
         * Set locale settings
     * Switch to the `Services` tab. Enable SSH with "Use password authentication"
     * Click `Save`
-7. In the same dialog, click `Yes`
-8. Confirm the next warning about erasing the SD card with `Yes`
-9. Wait for the imaging process to be finished (it'll take a few minutes)
+1. In the same dialog, click `Yes`
+1. Confirm the next warning about erasing the SD card with `Yes`
+1. Wait for the imaging process to be finished (it'll take a few minutes)
+1. Plug the SD into your Pi and optionally connect keyboard, monitor and mouse.
 
 ### Pre-boot preparation
 
@@ -104,19 +126,6 @@ If you need Wifi, add the information now
 * select `1 - Wireless LAN`
 * enter Wifi information
 
-</details>
-
-#### Workaround for 64-bit Kernels (Pi 4 and newer)
-
-<details>
-
-The installation process checks if a 32-bit OS is running, as 64-bit is currently not supported.
-This check also fails if the kernel is running in 64-bit mode. This is the default for Raspberry Pi models 4 and newer.
-
-To be able to run the installation, you have to switch to the 32-bit mode by modifying the `config.txt` and add/change the line `arm_64bit=0`.
-Up to Bullseye, the `config.txt` file is located at `/boot/`. Since Bookworm, the location changed to `/boot/firmware/` ([see here](https://www.raspberrypi.com/documentation/computers/config_txt.html)).
-
-Reboot before you proceed.
 </details>
 
 ## Install Phoniebox software
