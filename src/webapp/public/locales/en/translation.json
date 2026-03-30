@@ -266,11 +266,14 @@
     },
     "secondswipe": {
       "title": "Second Swipe",
-      "description": "Second action after the same card swiped again",
-      "restart": "Restart playlist",
+      "description": "Action when the same card is swiped again",
       "toggle": "Toggle pause / play",
+      "play": "Resume playback",
       "skip": "Skip to next track",
-      "ignore": "Ignore audio playout triggers, only system commands"
+      "rewind": "Restart current track",
+      "replay": "Restart playlist from beginning",
+      "replay_if_stopped": "Restart playlist (only if stopped)",
+      "none": "Do nothing"
     },
     "status": {
       "title": "System",

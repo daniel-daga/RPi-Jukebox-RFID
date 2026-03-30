@@ -267,10 +267,13 @@
     "secondswipe": {
       "title": "Erneute Aktivierung (Second Swipe)",
       "description": "Aktion, wenn dieselbe Karte ein weiteres Mal aktiviert wird",
-      "restart": "Wiedergabeliste neu starten",
       "toggle": "Pause / Wiedergabe umschalten",
+      "play": "Wiedergabe fortsetzen",
       "skip": "Zum nächsten Track springen",
-      "ignore": "Nur Systembefehle mehrfach ausführen"
+      "rewind": "Aktuellen Track neu starten",
+      "replay": "Wiedergabeliste von vorne starten",
+      "replay_if_stopped": "Wiedergabeliste neu starten (nur wenn gestoppt)",
+      "none": "Nichts tun"
     },
     "status": {
       "title": "Systemstatus",

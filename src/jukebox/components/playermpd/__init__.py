@@ -154,6 +154,7 @@ class PlayerMPD:
                                          'replay': self.replay,
                                          'replay_if_stopped': self.replay_if_stopped}
         self.second_swipe_action = None
+        self.second_swipe_action_name = 'none'
         self.decode_2nd_swipe_option()
 
         self.end_of_playlist_next_action = utils.get_config_action(cfg,
@@ -247,6 +248,7 @@ class PlayerMPD:
                          f"{[*self.second_swipe_action_dict.keys(), 'none', 'custom']}. Ignore setting.")
         if cfg_2nd_swipe_action in self.second_swipe_action_dict.keys():
             self.second_swipe_action = self.second_swipe_action_dict[cfg_2nd_swipe_action]
+            self.second_swipe_action_name = cfg_2nd_swipe_action
         if cfg_2nd_swipe_action == 'custom':
             custom_action = utils.decode_rpc_call(cfg.getn('playermpd', 'second_swipe_action', default=None))
             self.second_swipe_action = functools.partial(plugs.call_ignore_errors,
@@ -255,6 +257,25 @@ class PlayerMPD:
                                                          custom_action['method'],
                                                          custom_action['args'],
                                                          custom_action['kwargs'])
+            self.second_swipe_action_name = 'custom'
+
+    @plugs.tag
+    def get_second_swipe_action(self) -> str:
+        """Return the current second-swipe action name"""
+        return self.second_swipe_action_name
+
+    @plugs.tag
+    def set_second_swipe_action(self, action: str) -> None:
+        """Set the second-swipe action. Must be one of: toggle, play, skip, rewind, replay, replay_if_stopped, none"""
+        action = action.lower()
+        if action == 'none':
+            self.second_swipe_action = None
+            self.second_swipe_action_name = 'none'
+        elif action in self.second_swipe_action_dict:
+            self.second_swipe_action = self.second_swipe_action_dict[action]
+            self.second_swipe_action_name = action
+        else:
+            logger.error(f"Invalid second_swipe_action '{action}'")
 
     def mpd_retry_with_mutex(self, mpd_cmd, *args):
         """

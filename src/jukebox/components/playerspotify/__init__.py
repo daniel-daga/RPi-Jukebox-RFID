@@ -72,8 +72,7 @@ class PlayerSpotify:
     def __init__(self):
         import spotipy
         from spotipy.oauth2 import SpotifyOAuth
-
-        self._spotipy = spotipy
+        self._SpotifyOAuth = SpotifyOAuth
 
         self.nvm = nv_manager()
         status_file = cfg.setndefault('playerspotify', 'status_file',
@@ -103,18 +102,38 @@ class PlayerSpotify:
         self.device_id = (self.spotify_status.get('device_id')
                           or cfg.setndefault('playerspotify', 'device_id', value=None))
 
-        client_id = cfg.getn('playerspotify', 'client_id')
-        client_secret = cfg.getn('playerspotify', 'client_secret')
+        self._scope = ('user-read-playback-state '
+                       'user-modify-playback-state '
+                       'user-read-currently-playing')
+
+        self._lock = threading.RLock()
+        self._oauth_server = None
+        self._oauth_thread = None
+        self._sp = None
+        self._auth_manager = None
+
+        import spotipy as _spotipy
+        self._spotipy = _spotipy
+
+        self._init_auth_manager()
+
+    def _init_auth_manager(self):
+        """Initialise (or reinitialise) the Spotify auth manager and client from current config."""
+        client_id = cfg.getn('playerspotify', 'client_id', default='')
+        client_secret = cfg.getn('playerspotify', 'client_secret', default='')
         self._redirect_uri = cfg.setndefault('playerspotify', 'redirect_uri',
                                              value='http://localhost:8888/callback')
         cache_path = cfg.setndefault('playerspotify', 'token_cache',
                                      value='../../shared/settings/.spotify_token')
 
-        self._scope = ('user-read-playback-state '
-                       'user-modify-playback-state '
-                       'user-read-currently-playing')
+        if not client_id or not client_secret:
+            logger.warning("Spotify: client_id or client_secret not configured. "
+                           "Set credentials via Settings → Spotify.")
+            self._sp = None
+            self._auth_manager = None
+            return
 
-        self._auth_manager = SpotifyOAuth(
+        self._auth_manager = self._SpotifyOAuth(
             client_id=client_id,
             client_secret=client_secret,
             redirect_uri=self._redirect_uri,
@@ -122,13 +141,7 @@ class PlayerSpotify:
             cache_path=cache_path,
             open_browser=False,
         )
-
-        self._sp = spotipy.Spotify(auth_manager=self._auth_manager)
-        self._lock = threading.RLock()
-
-        # OAuth callback server state
-        self._oauth_server = None
-        self._oauth_thread = None
+        self._sp = self._spotipy.Spotify(auth_manager=self._auth_manager)
 
         if not self._is_authenticated():
             logger.info("Spotify: no cached token — start auth flow from the web UI "
@@ -152,8 +165,14 @@ class PlayerSpotify:
             self.second_swipe_action = self.toggle
             self.second_swipe_action_name = 'toggle'
 
+    def _is_configured(self):
+        """Return True if credentials are set and the Spotify client is ready"""
+        return self._sp is not None
+
     def _is_authenticated(self):
         """Return True if a valid (or refreshable) token is cached"""
+        if self._auth_manager is None:
+            return False
         try:
             token = self._auth_manager.get_cached_token()
             return token is not None
@@ -207,12 +226,49 @@ class PlayerSpotify:
     # ------------------------------------------------------------------
 
     @plugs.tag
+    def get_config(self) -> dict:
+        """Return current Spotify configuration. Client secret is never returned."""
+        return {
+            'client_id': cfg.getn('playerspotify', 'client_id', default=''),
+            'has_client_secret': bool(cfg.getn('playerspotify', 'client_secret', default='')),
+            'redirect_uri': cfg.getn('playerspotify', 'redirect_uri',
+                                     default='http://localhost:8888/callback'),
+        }
+
+    @plugs.tag
+    def set_config(self, client_id: str, client_secret: str, redirect_uri: str) -> dict:
+        """
+        Save Spotify credentials to jukebox.yaml and reinitialise the player.
+
+        Pass an empty string for client_secret to keep the existing secret unchanged.
+        """
+        with cfg:
+            cfg.setn('playerspotify', 'client_id', value=client_id.strip())
+            if client_secret.strip():
+                cfg.setn('playerspotify', 'client_secret', value=client_secret.strip())
+            cfg.setn('playerspotify', 'redirect_uri', value=redirect_uri.strip())
+        cfg.save()
+        self._stop_auth_server()
+        self._init_auth_manager()
+        logger.info("Spotify: configuration updated")
+        return {'success': True}
+
+    @plugs.tag
     def get_auth_status(self) -> dict:
         """Return authentication status and basic account info"""
+        if not self._is_configured():
+            return {
+                'authenticated': False,
+                'auth_in_progress': False,
+                'configured': False,
+                'redirect_uri': cfg.getn('playerspotify', 'redirect_uri',
+                                         default='http://localhost:8888/callback'),
+            }
         authenticated = self._is_authenticated()
         result = {
             'authenticated': authenticated,
             'auth_in_progress': self._oauth_server is not None,
+            'configured': True,
             'redirect_uri': self._redirect_uri,
         }
         if authenticated:
@@ -227,6 +283,8 @@ class PlayerSpotify:
     @plugs.tag
     def get_auth_url(self) -> str:
         """Return the Spotify authorisation URL to present to the user"""
+        if not self._is_configured():
+            return ''
         if not self._is_authenticated() and self._oauth_server is None:
             self._start_auth_server()
         return self._auth_manager.get_authorize_url()
@@ -242,7 +300,8 @@ class PlayerSpotify:
             logger.info("Spotify: token removed")
         except FileNotFoundError:
             pass
-        self._start_auth_server()
+        if self._is_configured():
+            self._start_auth_server()
 
     @plugs.tag
     def set_device(self, device_id) -> None:
@@ -271,9 +330,18 @@ class PlayerSpotify:
     # Playback control
     # ------------------------------------------------------------------
 
+    def _require_sp(self, method_name: str) -> bool:
+        """Log a warning and return False if the Spotify client is not ready."""
+        if self._sp is None:
+            logger.warning(f"Spotify: {method_name}() called but player is not configured.")
+            return False
+        return True
+
     @plugs.tag
     def play(self):
         """Resume playback on the configured Spotify device"""
+        if not self._require_sp('play'):
+            return
         with self._lock:
             try:
                 self._sp.start_playback(device_id=self.device_id)
