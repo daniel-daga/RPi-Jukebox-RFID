@@ -114,6 +114,17 @@ const commands = {
     plugin: 'ctrl',
     method: 'seek',
   },
+  getMpdSecondSwipe: {
+    _package: 'player',
+    plugin: 'ctrl',
+    method: 'get_second_swipe_action',
+  },
+  setMpdSecondSwipe: {
+    _package: 'player',
+    plugin: 'ctrl',
+    method: 'set_second_swipe_action',
+    argKeys: ['action'],
+  },
 
   // Volume
   setVolume: {
