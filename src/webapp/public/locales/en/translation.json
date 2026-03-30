@@ -30,7 +30,8 @@
           "prev_song": "Previous song",
           "shuffle": "Shuffle",
           "repeat": "Repeat",
-          "toggle": "Toggle Play/Pause"
+          "toggle": "Toggle Play/Pause",
+          "play_spotify": "Play Spotify URI"
         }
       },
       "controls-selector": {
@@ -44,7 +45,8 @@
           "audio": "Audio & Volume",
           "host": "System",
           "timers": "Timers",
-          "synchronisation": "Synchronisation"
+          "synchronisation": "Synchronisation",
+          "spotify": "Spotify"
         }
       },
       "actions": {
@@ -85,6 +87,12 @@
         },
         "timers": {
           "description": "Choose the amount of minutes you want the action to be performed."
+        },
+        "spotify": {
+          "uri-label": "Spotify URI",
+          "uri-hint": "Right-click any track, album or playlist in Spotify → Share → Copy URI",
+          "uri-type": "Type: {{type}}",
+          "uri-invalid": "Not a valid Spotify URI (should start with spotify:track:, spotify:album: or spotify:playlist:)"
         },
         "synchronisation": {
           "rfidcards": {
