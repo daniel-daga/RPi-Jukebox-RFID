@@ -315,9 +315,21 @@
     },
     "spotify": {
       "title": "Spotify",
+      "credentials": {
+        "title": "App-Zugangsdaten",
+        "hint": "Erstelle eine App unter developer.spotify.com und trage Client-ID und Client-Secret hier ein. Die Redirect-URI muss zur Adresse deines Pi passen.",
+        "client-id": "Client-ID",
+        "client-secret": "Client-Secret",
+        "secret-set": "Secret bereits hinterlegt",
+        "secret-unchanged": "Leer lassen, um das vorhandene Secret beizubehalten",
+        "redirect-uri": "Redirect-URI",
+        "redirect-uri-hint": "Muss mit der Redirect-URI in deinen Spotify-App-Einstellungen übereinstimmen, z. B. http://<pi-hostname>:8888/callback",
+        "saved": "Gespeichert!"
+      },
       "connect": {
         "connected-as": "Verbunden als {{user}}",
         "not-connected": "Nicht verbunden",
+        "not-configured": "Trage oben deine App-Zugangsdaten ein und verbinde dich dann.",
         "connect": "Mit Spotify verbinden",
         "disconnect": "Trennen",
         "waiting": "Warte auf Autorisierung…",
