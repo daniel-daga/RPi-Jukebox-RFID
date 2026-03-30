@@ -10,6 +10,7 @@ import {
   Grid,
 } from '@mui/material';
 
+import SpotifyCredentials from './credentials';
 import SpotifyConnect from './connect';
 import SpotifyDeviceSelect from './device-select';
 import SpotifySecondSwipe from './second-swipe';
@@ -29,6 +30,12 @@ const SettingsSpotify = () => {
           direction="column"
           sx={{ '& > .MuiGrid-root:not(:last-child)': spacer }}
         >
+          <Grid item>
+            <SpotifyCredentials />
+          </Grid>
+          <Grid item>
+            <Divider />
+          </Grid>
           <Grid item>
             <SpotifyConnect />
           </Grid>

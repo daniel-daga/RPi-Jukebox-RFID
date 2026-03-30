@@ -302,6 +302,17 @@ const commands = {
   },
 
   // Spotify — settings RPC methods
+  getSpotifyConfig: {
+    _package: 'spotify',
+    plugin: 'ctrl',
+    method: 'get_config',
+  },
+  setSpotifyConfig: {
+    _package: 'spotify',
+    plugin: 'ctrl',
+    method: 'set_config',
+    argKeys: ['client_id', 'client_secret', 'redirect_uri'],
+  },
   getSpotifyAuthStatus: {
     _package: 'spotify',
     plugin: 'ctrl',

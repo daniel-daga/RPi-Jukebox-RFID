@@ -63,7 +63,15 @@ const SpotifyConnect = () => {
     return <CircularProgress size={20} />;
   }
 
-  const { authenticated, auth_in_progress, user } = status;
+  const { authenticated, auth_in_progress, configured, user } = status;
+
+  if (!configured) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        {t('settings.spotify.connect.not-configured')}
+      </Typography>
+    );
+  }
 
   return (
     <Grid container direction="column" spacing={1}>
