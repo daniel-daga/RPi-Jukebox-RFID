@@ -282,6 +282,45 @@ const commands = {
     argKeys: ['settings'],
   },
 
+  // Spotify
+  getSpotifyAuthStatus: {
+    _package: 'spotify',
+    plugin: 'ctrl',
+    method: 'get_auth_status',
+  },
+  getSpotifyAuthUrl: {
+    _package: 'spotify',
+    plugin: 'ctrl',
+    method: 'get_auth_url',
+  },
+  disconnectSpotify: {
+    _package: 'spotify',
+    plugin: 'ctrl',
+    method: 'disconnect',
+  },
+  getSpotifyDevices: {
+    _package: 'spotify',
+    plugin: 'ctrl',
+    method: 'list_devices',
+  },
+  setSpotifyDevice: {
+    _package: 'spotify',
+    plugin: 'ctrl',
+    method: 'set_device',
+    argKeys: ['device_id'],
+  },
+  getSpotifySecondSwipe: {
+    _package: 'spotify',
+    plugin: 'ctrl',
+    method: 'get_second_swipe_action',
+  },
+  setSpotifySecondSwipe: {
+    _package: 'spotify',
+    plugin: 'ctrl',
+    method: 'set_second_swipe_action',
+    argKeys: ['action'],
+  },
+
   // Synchronisation
   'sync_rfidcards_all': {
     _package: 'sync_rfidcards',
