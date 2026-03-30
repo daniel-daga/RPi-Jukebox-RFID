@@ -301,6 +301,34 @@
     },
     "systemcontrols": {
       "title": "Systemsteuerung"
+    },
+    "spotify": {
+      "title": "Spotify",
+      "connect": {
+        "connected-as": "Verbunden als {{user}}",
+        "not-connected": "Nicht verbunden",
+        "connect": "Mit Spotify verbinden",
+        "disconnect": "Trennen",
+        "waiting": "Warte auf Autorisierung…",
+        "open-link": "Falls der Browser nicht automatisch geöffnet wurde, hier klicken:",
+        "auth-link": "Spotify autorisieren"
+      },
+      "device": {
+        "title": "Wiedergabegerät",
+        "hint": "Wähle das Spotify-Connect-Gerät aus, auf dem die Jukebox abspielen soll. Öffne Spotify zuerst auf einem Gerät, damit es hier erscheint.",
+        "label": "Gerät",
+        "active-device": "Aktives Gerät verwenden",
+        "refresh": "Aktualisieren",
+        "error": "Geräte konnten nicht geladen werden. Stelle sicher, dass Spotify verbunden ist."
+      },
+      "secondswipe": {
+        "title": "Zweites-Karten-Aktion",
+        "toggle": "Pausieren / Fortsetzen",
+        "play": "Wiedergabe fortsetzen",
+        "skip": "Nächsten Titel überspringen",
+        "rewind": "Von vorne beginnen",
+        "none": "Nichts tun"
+      }
     }
   }
 }

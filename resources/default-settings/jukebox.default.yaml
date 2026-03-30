@@ -155,6 +155,25 @@ speaking_text:
 sync_rfidcards:
   enable: false
   config_file: ../../shared/settings/sync_rfidcards.yaml
+# Spotify player plugin (optional - requires Spotify Premium)
+# To enable:
+#   1. Create an app at https://developer.spotify.com/dashboard
+#   2. Set the redirect URI in the app to: http://localhost:8888/callback
+#   3. Fill in client_id and client_secret below
+#   4. Run once: python src/jukebox/run_spotify_auth.py
+#   5. Add 'spotify: playerspotify' under modules.named above
+# playerspotify:
+#   client_id: YOUR_CLIENT_ID_HERE
+#   client_secret: YOUR_CLIENT_SECRET_HERE
+#   redirect_uri: http://localhost:8888/callback
+#   token_cache: ../../shared/settings/.spotify_token
+#   # Leave device_id empty to play on whichever Spotify device is active.
+#   # Run run_spotify_auth.py to list available device IDs.
+#   device_id:
+#   status_file: ../../shared/settings/spotify_player_status.json
+#   second_swipe_action:
+#     # Must be one of: 'toggle', 'play', 'skip', 'rewind', 'none'
+#     alias: toggle
 webapp:
   coverart_cache_path: ../../src/webapp/build/cover-cache
   # Load cover arts in Webapp. Change to false in case you have performance issue

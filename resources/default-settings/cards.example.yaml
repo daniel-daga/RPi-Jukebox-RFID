@@ -66,3 +66,21 @@
       alias: change_volume
       args: -3
       ignore_card_removal_action: true
+# Spotify examples (requires playerspotify plugin - see jukebox.default.yaml)
+# Replace <card-id> with the actual RFID card number from your reader.
+# Replace the URI with any Spotify URI (right-click in Spotify -> Share -> Copy URI).
+# '<card-id>':
+#       package: spotify
+#       plugin: ctrl
+#       method: play_card
+#       args: ['spotify:playlist:37i9dQZF1DXcBWIGoYBM5M']
+# '<card-id>':
+#       package: spotify
+#       plugin: ctrl
+#       method: play_card
+#       args: ['spotify:album:1DFixLWuPkv3KT3TnV35m3']
+# '<card-id>':
+#       package: spotify
+#       plugin: ctrl
+#       method: play_card
+#       args: ['spotify:track:4iV5W9uYEdYUVa79Axb7Rh']

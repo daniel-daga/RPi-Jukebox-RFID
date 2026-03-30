@@ -303,6 +303,34 @@
     },
     "systemcontrols": {
       "title": "System Controls"
+    },
+    "spotify": {
+      "title": "Spotify",
+      "connect": {
+        "connected-as": "Connected as {{user}}",
+        "not-connected": "Not connected",
+        "connect": "Connect with Spotify",
+        "disconnect": "Disconnect",
+        "waiting": "Waiting for authorisation…",
+        "open-link": "If the browser didn't open automatically, click here:",
+        "auth-link": "Authorise Spotify"
+      },
+      "device": {
+        "title": "Playback Device",
+        "hint": "Select which Spotify Connect device the jukebox should play on. Open Spotify on a device first to make it appear here.",
+        "label": "Device",
+        "active-device": "Use active device",
+        "refresh": "Refresh",
+        "error": "Could not load devices. Make sure Spotify is connected."
+      },
+      "secondswipe": {
+        "title": "Second Swipe Action",
+        "toggle": "Toggle pause / play",
+        "play": "Resume playback",
+        "skip": "Skip to next track",
+        "rewind": "Restart from beginning",
+        "none": "Do nothing"
+      }
     }
   }
 }
