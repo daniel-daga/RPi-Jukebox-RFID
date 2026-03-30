@@ -69,6 +69,13 @@ const JUKEBOX_ACTIONS_MAP = {
     }
   },
 
+  // Spotify
+  spotify: {
+    commands: {
+      play_spotify: {},
+    },
+  },
+
   // Synchronisation
   synchronisation: {
     commands: {

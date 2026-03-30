@@ -135,6 +135,13 @@ cmd_alias_definitions = {
         'method': 'start',
         'title': 'Start the stop music timer',
         'ignore_card_removal_action': True},
+    # SPOTIFY
+    'play_spotify': {
+        'title': 'Play Spotify URI triggered by card swipe',
+        'note': 'Plays a Spotify track, album, or playlist URI. Requires the playerspotify plugin.',
+        'package': 'spotify',
+        'plugin': 'ctrl',
+        'method': 'play_card'},
     # SYNCHRONISATION
     'sync_rfidcards_all': {
         'package': 'sync_rfidcards',

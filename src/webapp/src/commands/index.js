@@ -282,7 +282,15 @@ const commands = {
     argKeys: ['settings'],
   },
 
-  // Spotify
+  // Spotify — card command alias
+  play_spotify: {
+    _package: 'spotify',
+    plugin: 'ctrl',
+    method: 'play_card',
+    argKeys: ['uri'],
+  },
+
+  // Spotify — settings RPC methods
   getSpotifyAuthStatus: {
     _package: 'spotify',
     plugin: 'ctrl',
