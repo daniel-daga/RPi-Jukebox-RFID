@@ -122,7 +122,7 @@ class PlayerSpotify:
         client_id = cfg.getn('playerspotify', 'client_id', default='')
         client_secret = cfg.getn('playerspotify', 'client_secret', default='')
         self._redirect_uri = cfg.setndefault('playerspotify', 'redirect_uri',
-                                             value='http://localhost:8888/callback')
+                                             value='http://127.0.0.1:8888/callback')
         cache_path = cfg.setndefault('playerspotify', 'token_cache',
                                      value='../../shared/settings/.spotify_token')
 
@@ -232,7 +232,7 @@ class PlayerSpotify:
             'client_id': cfg.getn('playerspotify', 'client_id', default=''),
             'has_client_secret': bool(cfg.getn('playerspotify', 'client_secret', default='')),
             'redirect_uri': cfg.getn('playerspotify', 'redirect_uri',
-                                     default='http://localhost:8888/callback'),
+                                     default='http://127.0.0.1:8888/callback'),
         }
 
     @plugs.tag
@@ -262,7 +262,7 @@ class PlayerSpotify:
                 'auth_in_progress': False,
                 'configured': False,
                 'redirect_uri': cfg.getn('playerspotify', 'redirect_uri',
-                                         default='http://localhost:8888/callback'),
+                                         default='http://127.0.0.1:8888/callback'),
             }
         authenticated = self._is_authenticated()
         result = {
