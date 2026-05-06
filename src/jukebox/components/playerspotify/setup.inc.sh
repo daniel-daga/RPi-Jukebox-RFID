@@ -2,10 +2,21 @@
 # Setup script for the Spotify player plugin
 # Run this once on the Raspberry Pi before enabling the plugin.
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR/../../../../.."
+
 echo "Setting up Spotify player plugin..."
 
+# Use the project venv if present, otherwise fall back to system pip
+VENV="$PROJECT_ROOT/.venv"
+if [ -f "$VENV/bin/pip" ]; then
+    PIP="$VENV/bin/pip"
+else
+    PIP="pip3"
+fi
+
 # Install the Python dependency
-pip3 install -r "$(dirname "$0")/requirements.txt"
+"$PIP" install -r "$SCRIPT_DIR/requirements.txt"
 
 echo ""
 echo "Done! Next steps:"
