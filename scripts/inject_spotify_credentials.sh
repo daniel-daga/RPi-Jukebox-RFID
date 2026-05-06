@@ -18,8 +18,8 @@ if [ ! -f "$CONFIG" ]; then
 fi
 
 # Parse .env (ignore comments and blank lines)
-CLIENT_ID=$(grep -E '^SPOTIFY_CLIENT_ID=' "$ENV_FILE" | cut -d'=' -f2- | tr -d '[:space:]"'"'"')
-CLIENT_SECRET=$(grep -E '^SPOTIFY_CLIENT_SECRET=' "$ENV_FILE" | cut -d'=' -f2- | tr -d '[:space:]"'"'"')
+CLIENT_ID=$(grep -E '^SPOTIFY_CLIENT_ID=' "$ENV_FILE" | sed 's/^SPOTIFY_CLIENT_ID=//;s/[[:space:]]//g;s/"//g')
+CLIENT_SECRET=$(grep -E '^SPOTIFY_CLIENT_SECRET=' "$ENV_FILE" | sed 's/^SPOTIFY_CLIENT_SECRET=//;s/[[:space:]]//g;s/"//g')
 
 if [ -z "$CLIENT_ID" ] || [ -z "$CLIENT_SECRET" ]; then
     echo "ERROR: SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET not found in $ENV_FILE"
