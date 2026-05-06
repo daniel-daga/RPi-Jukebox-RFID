@@ -3,7 +3,7 @@
 # Run this once on the Raspberry Pi before enabling the plugin.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$SCRIPT_DIR/../../../../.."
+PROJECT_ROOT="$SCRIPT_DIR/../../../.."
 
 echo "Setting up Spotify player plugin..."
 
