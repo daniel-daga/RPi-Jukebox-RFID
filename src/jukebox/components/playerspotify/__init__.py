@@ -63,6 +63,10 @@ class PlayerSpotify:
 
         self._lock = threading.RLock()
         self._running = True
+        # Elapsed-time tracking (go-librespot has no position field in /status)
+        self._last_songid = ''
+        self._play_start_time = None
+        self._elapsed_at_pause = 0.0
         self._poll_thread = threading.Thread(
             target=self._poll_loop, name='spotify-poll', daemon=True)
         self._poll_thread.start()
@@ -125,33 +129,57 @@ class PlayerSpotify:
 
         track = status.get('track') or {}
         artist_names = track.get('artist_names') or []
+        uri = track.get('uri') or ''
+        name = track.get('name') or ''
 
         return {
             'player': 'spotify',
             'state': state,
-            'title': track.get('name', ''),
+            'title': name,
             'artist': ', '.join(artist_names),
-            'album': track.get('album_name', ''),
-            'albumart': track.get('album_cover_url', ''),
-            'uri': track.get('uri', ''),
+            'album': track.get('album_name') or '',
+            'albumart': track.get('album_cover_url') or '',
+            'uri': uri,
             'duration': (track.get('duration') or 0) // 1000,
-            'volume': status.get('volume', 0),
-            # webapp compat: controls.js reads these
-            'songid': track.get('uri', ''),
+            'volume': status.get('volume') or 0,
+            # webapp compat: songid gates display; use name as fallback if uri absent
+            'songid': uri or name,
             'random': '1' if status.get('shuffle_context') else '0',
             'repeat': '1' if status.get('repeat_context') else '0',
             'single': '1' if status.get('repeat_track') else '0',
         }
 
     def _poll_loop(self):
-        """Poll /status every 2 s and publish playerstatus on any change."""
-        last = {}
+        """Poll /status every 2 s and publish playerstatus, tracking elapsed time locally."""
         while self._running:
             status = self._get('/status')
             ps = self._to_playerstatus(status)
-            if ps and ps != last:
+            if ps:
+                playing = not status.get('stopped', True) and not status.get('paused', False)
+                current_songid = ps.get('songid', '')
+
+                if current_songid != self._last_songid:
+                    # New track: reset elapsed counter
+                    self._last_songid = current_songid
+                    self._elapsed_at_pause = 0.0
+                    self._play_start_time = time.time() if playing else None
+                elif playing:
+                    if self._play_start_time is None:
+                        # Resumed from pause
+                        self._play_start_time = time.time()
+                else:
+                    # Paused or stopped: freeze elapsed
+                    if self._play_start_time is not None:
+                        self._elapsed_at_pause += time.time() - self._play_start_time
+                        self._play_start_time = None
+
+                if playing and self._play_start_time is not None:
+                    elapsed = self._elapsed_at_pause + (time.time() - self._play_start_time)
+                else:
+                    elapsed = self._elapsed_at_pause
+
+                ps['elapsed'] = round(elapsed, 1)
                 publishing.get_publisher().send('playerstatus', ps)
-                last = ps
             time.sleep(2)
 
     def exit(self):

@@ -21,19 +21,13 @@ const SeekBar = () => {
   const isSpotify = playerstatus?.player === 'spotify';
 
   const [isSeeking, setIsSeeking] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [timeElapsed, setTimeElapsed] = useState(parseFloat(playerstatus?.elapsed) || 0);
+  const [timeElapsed, setTimeElapsed] = useState(0);
   const timeTotal = parseFloat(playerstatus?.duration) || 0;
+  const progress = timeToProgress(timeTotal, timeElapsed);
 
-  const updateTimeAndProgress = (newTime) => {
-    setTimeElapsed(newTime);
-    setProgress(timeToProgress(timeTotal, newTime));
-  };
-
-  // Handle seek events when sliding the progress bar
   const handleSeekToPosition = (event, newPosition) => {
     setIsSeeking(true);
-    updateTimeAndProgress(progressToTime(timeTotal, newPosition));
+    setTimeElapsed(progressToTime(timeTotal, newPosition));
   };
 
   const playFromNewTime = () => {
@@ -41,13 +35,24 @@ const SeekBar = () => {
     setIsSeeking(false);
   };
 
+  // Sync elapsed from playerstatus on every update (MPD provides it; Spotify provides correction)
   useEffect(() => {
-    // Avoid updating time and progress when user is seeking to new
-    // song position
     if (!isSeeking) {
-      updateTimeAndProgress(playerstatus?.elapsed);
+      setTimeElapsed(parseFloat(playerstatus?.elapsed) || 0);
     }
-  }, [playerstatus]);
+  }, [playerstatus]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Spotify: advance elapsed by 1s each second while playing (go-librespot has no position field)
+  useEffect(() => {
+    if (!isSpotify || playerstatus?.state !== 'play') return;
+    const timer = setInterval(() => {
+      setTimeElapsed(prev => {
+        const next = prev + 1;
+        return timeTotal > 0 ? Math.min(next, timeTotal) : next;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isSpotify, playerstatus?.state, timeTotal]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <>
     <Grid container>
