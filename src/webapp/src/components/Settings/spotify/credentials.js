@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
+  Alert,
   Button,
   CircularProgress,
   Grid,
@@ -17,6 +18,7 @@ const SpotifyCredentials = () => {
   const { t } = useTranslation();
 
   const [config, setConfig] = useState(null);  // null = loading
+  const [pluginMissing, setPluginMissing] = useState(false);
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   const [redirectUri, setRedirectUri] = useState('');
@@ -30,6 +32,9 @@ const SpotifyCredentials = () => {
         setConfig(result);
         setClientId(result.client_id || '');
         setRedirectUri(result.redirect_uri || '');
+      } else {
+        setPluginMissing(true);
+        setConfig({ client_id: '', has_client_secret: false, redirect_uri: 'http://localhost:8888/callback' });
       }
     };
     load();
@@ -61,6 +66,13 @@ const SpotifyCredentials = () => {
 
   return (
     <Grid container direction="column" spacing={2}>
+      {pluginMissing && (
+        <Grid item>
+          <Alert severity="warning">
+            {t('settings.spotify.credentials.plugin-missing')}
+          </Alert>
+        </Grid>
+      )}
       <Grid item>
         <Typography variant="subtitle2">
           {t('settings.spotify.credentials.title')}

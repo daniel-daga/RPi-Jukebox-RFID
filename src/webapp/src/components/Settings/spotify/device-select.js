@@ -23,16 +23,25 @@ const SpotifyDeviceSelect = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isError, setIsError] = useState(false);
 
-  const fetchDevices = async () => {
+  const fetchDevices = async (savedDeviceId) => {
     setIsLoading(true);
     setIsError(false);
     const { result, error } = await request('getSpotifyDevices');
     setIsLoading(false);
     if (error) { setIsError(true); return; }
     setDevices(result || []);
+    if (savedDeviceId !== undefined) setSelected(savedDeviceId || '');
   };
 
-  useEffect(() => { fetchDevices(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const init = async () => {
+      const { result } = await request('getSpotifyConfig');
+      const savedId = result?.device_id || '';
+      setSelected(savedId);
+      fetchDevices(savedId);
+    };
+    init();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
     setIsSaving(true);

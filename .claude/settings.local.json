@@ -4,7 +4,26 @@
       "Bash(pip show *)",
       "PowerShell(pip show *)",
       "PowerShell(Get-Command *)",
-      "PowerShell(py *)"
+      "PowerShell(py *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(xargs grep *)",
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=512\" npm run build)",
+      "Bash(where sshpass *)",
+      "Bash(where pscp *)",
+      "Bash(where plink *)",
+      "Bash(python3 -c \"import paramiko\")",
+      "Bash(python -c \"import paramiko\")",
+      "Bash(wsl bash *)",
+      "PowerShell(plink *)",
+      "Bash(py *)",
+      "Bash(gh api *)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

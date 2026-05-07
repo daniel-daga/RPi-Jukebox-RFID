@@ -91,6 +91,22 @@ src/jukebox/
 - **Consider backwards compatibility** for configuration and APIs
 - **Review related GitHub issues/PRs** (if context is available)
 
+## Development Environment
+
+- **Host OS:** Windows 11 — use PowerShell syntax, avoid Linux-only shell idioms; Python is `py` not `python`
+- **Target Device:** Raspberry Pi at `pi@phoniebox`, password `raspberry`
+- **SSH Access:** Use `paramiko` (Python SSH library) to connect and run commands on the Pi
+  - Always call `sys.stdout.reconfigure(encoding="utf-8", errors="replace")` before printing SSH output (Unicode bullet chars in systemctl output crash cp1252)
+  - Write helper scripts to `.claude/worktrees/pi_*.py` and run with `py <path>`
+  - Avoid parentheses in `echo` strings joined with `;` — they trigger bash subshell syntax errors
+- **Pi Services:** All jukebox services run as **user services** under `pi`; use `systemctl --user` not `sudo systemctl`
+  - `jukebox-daemon.service` — main jukebox daemon (RPC on ZMQ tcp:5555, publisher on 5557/5558)
+  - `go-librespot.service` — Spotify Connect + local playback API on http://127.0.0.1:3678
+  - `mpd.service` — Music Player Daemon
+  - `pulseaudio.service` — PulseAudio sound server (both MPD and go-librespot route through it)
+  - `journalctl --user -u <service>` for user service logs (system journal may show nothing)
+- **Webapp Deployment:** Build the webapp locally (`src/webapp/`), then copy the `build/` folder to the Pi over SSH/SCP — do NOT build on the Pi
+
 ## Development Workflow
 
 1. Work on `future3/develop` branch

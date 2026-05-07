@@ -326,7 +326,8 @@
         "secret-unchanged": "Leave blank to keep the existing secret",
         "redirect-uri": "Redirect URI",
         "redirect-uri-hint": "Must match the Redirect URI in your Spotify app settings, e.g. http://<pi-hostname>:8888/callback",
-        "saved": "Saved!"
+        "saved": "Saved!",
+        "plugin-missing": "The Spotify plugin is not running. Make sure 'spotify: playerspotify' is listed under modules.named in jukebox.yaml and that spotipy is installed (pip install spotipy)."
       },
       "connect": {
         "connected-as": "Connected as {{user}}",
