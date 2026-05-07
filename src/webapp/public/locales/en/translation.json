@@ -317,35 +317,10 @@
     },
     "spotify": {
       "title": "Spotify",
-      "credentials": {
-        "title": "App Credentials",
-        "hint": "Create an app at developer.spotify.com and paste the Client ID and Client Secret here. Set the Redirect URI to match your Pi's address.",
-        "client-id": "Client ID",
-        "client-secret": "Client Secret",
-        "secret-set": "Secret already set",
-        "secret-unchanged": "Leave blank to keep the existing secret",
-        "redirect-uri": "Redirect URI",
-        "redirect-uri-hint": "Must match the Redirect URI in your Spotify app settings, e.g. http://<pi-hostname>:8888/callback",
-        "saved": "Saved!",
-        "plugin-missing": "The Spotify plugin is not running. Make sure 'spotify: playerspotify' is listed under modules.named in jukebox.yaml and that spotipy is installed (pip install spotipy)."
-      },
-      "connect": {
-        "connected-as": "Connected as {{user}}",
-        "not-connected": "Not connected",
-        "not-configured": "Enter your App Credentials above, then connect.",
-        "connect": "Connect with Spotify",
-        "disconnect": "Disconnect",
-        "waiting": "Waiting for authorisation…",
-        "open-link": "If the browser didn't open automatically, click here:",
-        "auth-link": "Authorise Spotify"
-      },
-      "device": {
-        "title": "Playback Device",
-        "hint": "Select which Spotify Connect device the jukebox should play on. Open Spotify on a device first to make it appear here.",
-        "label": "Device",
-        "active-device": "Use active device",
-        "refresh": "Refresh",
-        "error": "Could not load devices. Make sure Spotify is connected."
+      "status": {
+        "connected-as": "Connected as {{user}} on {{device}}",
+        "not-connected": "Not authenticated",
+        "reauth-hint": "To re-authenticate, restart go-librespot and visit the URL shown in the service logs."
       },
       "secondswipe": {
         "title": "Second Swipe Action",

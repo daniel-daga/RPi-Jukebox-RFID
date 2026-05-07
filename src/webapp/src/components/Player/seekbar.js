@@ -18,6 +18,7 @@ const SeekBar = () => {
   const { t } = useTranslation();
   const { state } = useContext(PlayerContext);
   const { playerstatus } = state;
+  const isSpotify = playerstatus?.player === 'spotify';
 
   const [isSeeking, setIsSeeking] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -35,10 +36,8 @@ const SeekBar = () => {
     updateTimeAndProgress(progressToTime(timeTotal, newPosition));
   };
 
-  // Only send commend to backend when user committed to new position
-  // We don't send it while seeking (too many useless requests)
   const playFromNewTime = () => {
-    request('seek', { new_time: timeElapsed.toFixed(3) });
+    if (!isSpotify) request('seek', { new_time: timeElapsed.toFixed(3) });
     setIsSeeking(false);
   };
 
@@ -55,7 +54,7 @@ const SeekBar = () => {
       <Grid item xs>
         <Slider
           aria-labelledby={t('player.seekbar.song-position')}
-          disabled={!playerstatus?.title}
+          disabled={!playerstatus?.title || isSpotify}
           onChange={handleSeekToPosition}
           onChangeCommitted={playFromNewTime}
           size="small"

@@ -315,35 +315,10 @@
     },
     "spotify": {
       "title": "Spotify",
-      "credentials": {
-        "title": "App-Zugangsdaten",
-        "hint": "Erstelle eine App unter developer.spotify.com und trage Client-ID und Client-Secret hier ein. Die Redirect-URI muss zur Adresse deines Pi passen.",
-        "client-id": "Client-ID",
-        "client-secret": "Client-Secret",
-        "secret-set": "Secret bereits hinterlegt",
-        "secret-unchanged": "Leer lassen, um das vorhandene Secret beizubehalten",
-        "redirect-uri": "Redirect-URI",
-        "redirect-uri-hint": "Muss mit der Redirect-URI in deinen Spotify-App-Einstellungen übereinstimmen, z. B. http://<pi-hostname>:8888/callback",
-        "saved": "Gespeichert!",
-        "plugin-missing": "Das Spotify-Plugin läuft nicht. Stelle sicher, dass 'spotify: playerspotify' unter modules.named in der jukebox.yaml eingetragen ist und spotipy installiert ist (pip install spotipy)."
-      },
-      "connect": {
-        "connected-as": "Verbunden als {{user}}",
-        "not-connected": "Nicht verbunden",
-        "not-configured": "Trage oben deine App-Zugangsdaten ein und verbinde dich dann.",
-        "connect": "Mit Spotify verbinden",
-        "disconnect": "Trennen",
-        "waiting": "Warte auf Autorisierung…",
-        "open-link": "Falls der Browser nicht automatisch geöffnet wurde, hier klicken:",
-        "auth-link": "Spotify autorisieren"
-      },
-      "device": {
-        "title": "Wiedergabegerät",
-        "hint": "Wähle das Spotify-Connect-Gerät aus, auf dem die Jukebox abspielen soll. Öffne Spotify zuerst auf einem Gerät, damit es hier erscheint.",
-        "label": "Gerät",
-        "active-device": "Aktives Gerät verwenden",
-        "refresh": "Aktualisieren",
-        "error": "Geräte konnten nicht geladen werden. Stelle sicher, dass Spotify verbunden ist."
+      "status": {
+        "connected-as": "Verbunden als {{user}} auf {{device}}",
+        "not-connected": "Nicht authentifiziert",
+        "reauth-hint": "Zum erneuten Authentifizieren go-librespot neu starten und die URL aus den Service-Logs aufrufen."
       },
       "secondswipe": {
         "title": "Zweites-Karten-Aktion",
