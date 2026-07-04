@@ -5,13 +5,12 @@ Package for interfacing with the Spotify Web API
 Allows triggering Spotify playback (tracks, albums, playlists) via RFID cards.
 Requires a Spotify Premium account and a registered Spotify Developer App.
 
-Setup (one-time):
-1. Create a Spotify App at https://developer.spotify.com/dashboard
-2. In the app settings add this Redirect URI:
-       http://<your-pi-hostname-or-ip>:8888/callback
-3. Add your credentials to jukebox.yaml under 'playerspotify' and enable the module
-4. Open the Jukebox web UI → Settings → Spotify → click "Connect with Spotify"
-5. Authorise in your browser — the token is saved automatically
+Setup (one-time, entirely in the web UI):
+Open Settings → Spotify — a guided wizard walks through creating the Spotify
+Developer App (showing the exact Redirect URI to register), entering the
+Client ID/Secret and authorising the account. If the OAuth redirect cannot
+reach the jukebox (e.g. loopback Redirect URI), the redirect URL can be
+pasted into the UI instead (see submit_auth_code).
 
 Card configuration example (cards.yaml):
     '<card-id>':
@@ -33,6 +32,7 @@ import jukebox.multitimer as multitimer
 import jukebox.publishing as publishing
 from jukebox.NvManager import nv_manager
 from . import librespot_seeder
+from .auth_code import extract_auth_code
 from .device_resolver import resolve_device_id
 
 logger = logging.getLogger('jb.PlayerSpotify')
@@ -462,6 +462,32 @@ class PlayerSpotify:
         if not self._is_authenticated() and self._oauth_server is None:
             self._start_auth_server()
         return self._auth_manager.get_authorize_url()
+
+    @plugs.tag
+    def submit_auth_code(self, code_or_url: str) -> dict:
+        """Complete the OAuth flow with a manually pasted code or redirect URL
+
+        Fallback for when the Spotify redirect cannot reach the jukebox
+        (e.g. the app's Redirect URI is http://127.0.0.1:8888/callback and
+        the user browses from another device): after approving, the user
+        copies the address of the resulting error page into the web UI.
+
+        :param code_or_url: the full redirect URL or the bare auth code
+        """
+        if not self._is_configured():
+            return {'success': False, 'error': 'not_configured'}
+        code = extract_auth_code(code_or_url)
+        if not code:
+            return {'success': False, 'error': 'no_code'}
+        try:
+            self._auth_manager.get_access_token(code, as_dict=False)
+        except Exception as e:
+            logger.error(f"Spotify: manual auth code rejected: {e}")
+            return {'success': False, 'error': 'invalid_code'}
+        logger.info("Spotify: OAuth token obtained via pasted code — player is now active")
+        self._stop_auth_server()
+        self._seed_librespot_async()
+        return {'success': True}
 
     @plugs.tag
     def disconnect(self) -> None:
