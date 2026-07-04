@@ -20,6 +20,7 @@ Both players coexist — local music via MPD and Spotify run independently.
 | Path | Purpose |
 |------|---------|
 | `src/jukebox/components/playerspotify/__init__.py` | Main plugin — OAuth server, playback control, RPC methods |
+| `src/jukebox/components/playerspotify/auth_code.py` | Pure helper — extracts the OAuth code from a pasted redirect URL |
 | `src/jukebox/components/playerspotify/requirements.txt` | Python dependency: `spotipy>=2.23.0` |
 | `resources/default-settings/jukebox.default.yaml` | Commented-out `playerspotify:` config block (reference) |
 | `resources/default-settings/cards.example.yaml` | Commented-out Spotify card examples |
@@ -28,8 +29,11 @@ Both players coexist — local music via MPD and Spotify run independently.
 
 | Path | Purpose |
 |------|---------|
-| `src/webapp/src/components/Settings/spotify/index.js` | Settings card container |
-| `src/webapp/src/components/Settings/spotify/connect.js` | Auth status, Connect/Disconnect button, polling |
+| `src/webapp/src/components/Settings/spotify/index.js` | Settings card container — owns auth status, switches wizard ↔ settings view |
+| `src/webapp/src/components/Settings/spotify/wizard.js` | Guided first-time setup (stepper): create app → credentials → connect |
+| `src/webapp/src/components/Settings/spotify/utils.js` | Redirect-URI helpers (suggested Pi URI, loopback fallback) |
+| `src/webapp/src/components/Settings/spotify/credentials.js` | Client ID/Secret form, prefills the redirect URI |
+| `src/webapp/src/components/Settings/spotify/connect.js` | Auth status, Connect/Disconnect button, manual code-paste fallback |
 | `src/webapp/src/components/Settings/spotify/device-select.js` | Spotify Connect device picker |
 | `src/webapp/src/components/Settings/spotify/second-swipe.js` | Second-swipe action radio group |
 | `src/webapp/src/components/Settings/index.js` | Modified — imports and renders `SettingsSpotify` |
@@ -70,6 +74,13 @@ plugs.register(player_ctrl, name='ctrl')
 
 The callback server port is derived from the `redirect_uri` config value — so changing the
 port in the Spotify App and in config is enough; no code changes needed.
+
+**Manual fallback (`submit_auth_code`):** Spotify's dashboard only accepts plain-HTTP
+redirect URIs for loopback addresses (`http://127.0.0.1:...`), so for newly created apps
+the redirect may land on the *user's* machine instead of the Pi and show an error page.
+In that case the user copies the full address (`...callback?code=XYZ`) from the browser
+and pastes it into the connect step of the web UI; `submit_auth_code()` extracts the code
+(see `auth_code.py`) and completes the token exchange.
 
 ### Card → Playback Flow
 
@@ -123,32 +134,31 @@ playerspotify:
 
 ## Setup (step by step)
 
-1. **Create a Spotify Developer App**
-   - Go to https://developer.spotify.com/dashboard
-   - Create an app (any name/description)
-   - Under *Settings → Redirect URIs* add:
-     `http://<your-pi-hostname-or-ip>:8888/callback`
-   - Copy the **Client ID** and **Client Secret**
+The whole setup runs from the web UI. Open **Settings → Spotify** — until the account is
+connected, a guided wizard walks through all steps:
 
-2. **Install the Python dependency** (on the Pi)
-   ```bash
-   pip install spotipy>=2.23.0
-   ```
+1. **Create a Spotify Developer App** — the wizard links to
+   https://developer.spotify.com/dashboard and shows the exact Redirect URI to add,
+   derived from the address the web UI is opened on (with a copy button). If Spotify's
+   dashboard rejects that address (plain HTTP is only accepted for loopback), the wizard
+   offers `http://127.0.0.1:8888/callback` as the alternative.
 
-3. **Edit `jukebox.yaml`** — add the `playerspotify` block and module entry shown above.
+2. **Enter credentials** — paste the app's **Client ID** and **Client Secret**; the
+   Redirect URI is prefilled. Saving reinitialises the plugin, no restart needed.
 
-4. **Restart the jukebox**
-   ```bash
-   systemctl restart jukebox   # or however you run it
-   ```
+3. **Connect** — click **Connect with Spotify**, log in and approve in the opened tab.
+   The UI auto-updates to "Connected as …". If the redirect could not reach the Pi
+   (loopback URI), copy the error page's address (`...?code=...`) into the paste field
+   shown below the button.
 
-5. **Authorise** — open the web UI → Settings → Spotify → click **Connect with Spotify**.
-   A browser tab opens; log in and approve. The UI auto-updates to "Connected as …".
+Once connected, the card switches to the regular settings (device, second-swipe action).
 
-6. **Pick a device** — in the same settings card, click *Refresh*, select the device,
-   click *Save*.
+4. **Pick a device** *(optional)* — by default playback goes to the librespot instance
+   on the Pi itself (device name `Phoniebox`). Select a different Spotify Connect device
+   under *Playback Device* if desired.
 
-7. **Map cards** — add entries to `shared/settings/cards.yaml`:
+5. **Map cards** — either via the Cards UI (action *Spotify*) or in
+   `shared/settings/cards.yaml`:
    ```yaml
    '0123456789':
      package: spotify
@@ -157,6 +167,10 @@ playerspotify:
      args: ['spotify:playlist:37i9dQZF1DXcBWIGoYBM5M']
    ```
    Get the URI from Spotify: right-click any track/album/playlist → *Share* → *Copy URI*.
+
+The module ships enabled in `jukebox.default.yaml` (`spotify: playerspotify` under
+`modules.named`); `spotipy` and librespot are installed by
+`src/jukebox/components/playerspotify/setup.inc.sh`.
 
 ---
 
@@ -177,6 +191,7 @@ playerspotify:
 | `list_devices` | — | Returns list of available Spotify Connect devices |
 | `get_auth_status` | — | Returns `{ authenticated, auth_in_progress, user, email }` |
 | `get_auth_url` | — | Returns the Spotify OAuth URL; starts callback server |
+| `submit_auth_code` | `code_or_url: str` | Completes OAuth with a manually pasted redirect URL or code |
 | `disconnect` | — | Deletes cached token, restarts callback server |
 | `set_device` | `device_id` | Persists chosen device (pass `null` for active device) |
 | `get_second_swipe_action` | — | Returns current action name string |

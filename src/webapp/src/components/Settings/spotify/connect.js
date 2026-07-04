@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -7,6 +7,7 @@ import {
   CircularProgress,
   Grid,
   Link,
+  TextField,
   Typography,
 } from '@mui/material';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
@@ -14,31 +15,17 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 
 import request from '../../../utils/request';
 
-const POLL_INTERVAL_MS = 3000;
-
-const SpotifyConnect = () => {
+// Auth status is owned by the parent (Settings/spotify/index.js), which also
+// polls while authorisation is pending. This component renders the state and
+// triggers the connect / disconnect / manual-code actions.
+const SpotifyConnect = ({ status, onRefreshStatus }) => {
   const { t } = useTranslation();
 
-  const [status, setStatus] = useState(null);   // null = loading
   const [authUrl, setAuthUrl] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  const fetchStatus = useCallback(async () => {
-    const { result, error } = await request('getSpotifyAuthStatus');
-    if (!error) setStatus(result);
-  }, []);
-
-  // Initial fetch
-  useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
-
-  // Poll while auth is in progress
-  useEffect(() => {
-    if (!status?.auth_in_progress) return;
-    const id = setInterval(fetchStatus, POLL_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [status?.auth_in_progress, fetchStatus]);
+  const [manualCode, setManualCode] = useState('');
+  const [manualError, setManualError] = useState(false);
+  const [isSubmittingCode, setIsSubmittingCode] = useState(false);
 
   const handleConnect = async () => {
     setIsLoading(true);
@@ -47,7 +34,7 @@ const SpotifyConnect = () => {
     if (!error && result) {
       setAuthUrl(result);
       window.open(result, '_blank', 'noopener,noreferrer');
-      await fetchStatus();
+      await onRefreshStatus();
     }
   };
 
@@ -55,11 +42,26 @@ const SpotifyConnect = () => {
     setIsLoading(true);
     await request('disconnectSpotify');
     setAuthUrl(null);
-    await fetchStatus();
+    await onRefreshStatus();
     setIsLoading(false);
   };
 
-  if (status === null) {
+  const handleSubmitCode = async () => {
+    setIsSubmittingCode(true);
+    setManualError(false);
+    const { result, error } = await request('submitSpotifyAuthCode', {
+      code_or_url: manualCode,
+    });
+    setIsSubmittingCode(false);
+    if (!error && result?.success) {
+      setManualCode('');
+      await onRefreshStatus();
+    } else {
+      setManualError(true);
+    }
+  };
+
+  if (!status) {
     return <CircularProgress size={20} />;
   }
 
@@ -123,13 +125,51 @@ const SpotifyConnect = () => {
             variant="contained"
             size="small"
             onClick={handleConnect}
-            disabled={isLoading || auth_in_progress}
+            disabled={isLoading}
             startIcon={isLoading ? <CircularProgress size={16} /> : null}
           >
             {t('settings.spotify.connect.connect')}
           </Button>
         )}
       </Grid>
+
+      {/* Fallback: paste the redirect URL when Spotify's redirect cannot
+          reach the jukebox (e.g. loopback redirect URI) */}
+      {!authenticated && (auth_in_progress || authUrl) && (
+        <Grid item>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            {t('settings.spotify.connect.manual-hint')}
+          </Typography>
+          <Grid container direction="row" spacing={1} alignItems="center" sx={{ mt: 0 }}>
+            <Grid item xs>
+              <TextField
+                fullWidth
+                size="small"
+                label={t('settings.spotify.connect.manual-label')}
+                placeholder="http://127.0.0.1:8888/callback?code=..."
+                value={manualCode}
+                onChange={(e) => { setManualCode(e.target.value); setManualError(false); }}
+                error={manualError}
+                helperText={manualError
+                  ? t('settings.spotify.connect.manual-error')
+                  : ''}
+              />
+            </Grid>
+            <Grid item>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleSubmitCode}
+                disabled={isSubmittingCode || !manualCode.trim()}
+              >
+                {isSubmittingCode
+                  ? <CircularProgress size={16} />
+                  : t('settings.spotify.connect.manual-submit')}
+              </Button>
+            </Grid>
+          </Grid>
+        </Grid>
+      )}
     </Grid>
   );
 };

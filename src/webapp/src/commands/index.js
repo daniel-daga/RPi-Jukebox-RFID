@@ -323,6 +323,12 @@ const commands = {
     plugin: 'ctrl',
     method: 'get_auth_url',
   },
+  submitSpotifyAuthCode: {
+    _package: 'spotify',
+    plugin: 'ctrl',
+    method: 'submit_auth_code',
+    argKeys: ['code_or_url'],
+  },
   disconnectSpotify: {
     _package: 'spotify',
     plugin: 'ctrl',
