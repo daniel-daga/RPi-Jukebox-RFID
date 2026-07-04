@@ -26,8 +26,11 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 
+import components.player
 import jukebox.cfghandler
 import jukebox.plugs as plugs
+import jukebox.multitimer as multitimer
+import jukebox.publishing as publishing
 from jukebox.NvManager import nv_manager
 
 logger = logging.getLogger('jb.PlayerSpotify')
@@ -116,6 +119,19 @@ class PlayerSpotify:
         self._spotipy = _spotipy
 
         self._init_auth_manager()
+
+        # Take part in the unified playback engine: while Spotify is the
+        # active backend it receives the player.ctrl.* transport commands
+        # and owns the 'playerstatus' publishing topic
+        components.player.arbiter.register_backend('spotify', self)
+
+        # Status poll: publishes 'playerstatus' while Spotify is the active
+        # player. The interval is Web-API friendly (rate limits!) - snappy UI
+        # updates come from the immediate publish after each transport command.
+        self.status_poll_interval = 2.0
+        self.status_thread = multitimer.GenericEndlessTimerClass(
+            'spotify.timer_status', self.status_poll_interval, self._status_poll)
+        self.status_thread.start()
 
     def _init_auth_manager(self):
         """Initialise (or reinitialise) the Spotify auth manager and client from current config."""
@@ -219,7 +235,86 @@ class PlayerSpotify:
 
     def exit(self):
         self._stop_auth_server()
+        self.status_thread.cancel()
         self.nvm.save_all()
+
+    # ------------------------------------------------------------------
+    # Unified playback engine integration
+    # ------------------------------------------------------------------
+
+    def _claim_active(self):
+        """Make Spotify the active player backend (silences MPD)"""
+        components.player.arbiter.claim_active('spotify')
+
+    def on_deactivate(self):
+        """Called by the player arbiter when another backend becomes the active player"""
+        if self._sp is None:
+            return
+        with self._lock:
+            try:
+                current = self._sp.current_playback()
+                if current and current.get('is_playing'):
+                    logger.debug("Pausing Spotify playback - another player backend became active")
+                    self._sp.pause_playback(device_id=self.device_id)
+            except Exception as e:
+                logger.debug(f"on_deactivate(): {e}")
+
+    def _build_status(self):
+        """Build a 'playerstatus' payload with MPD-compatible keys for the webapp
+
+        :return: status dict, or None on a transient Web API error
+        """
+        status = {'player': 'spotify', 'state': 'stop'}
+        if self._sp is None:
+            return status
+        try:
+            with self._lock:
+                current = self._sp.current_playback()
+        except Exception as e:
+            logger.debug(f"_build_status(): {e}")
+            return None
+        if not current:
+            return status
+        item = current.get('item') or {}
+        repeat_state = current.get('repeat_state', 'off')
+        status.update({
+            'state': 'play' if current.get('is_playing') else 'pause',
+            # songid enables the transport buttons in the webapp
+            'songid': item.get('id') or item.get('uri', ''),
+            'file': item.get('uri', ''),
+            'title': item.get('name', ''),
+            'artist': ', '.join(a['name'] for a in item.get('artists', [])),
+            'album': (item.get('album') or {}).get('name', ''),
+            'elapsed': str((current.get('progress_ms') or 0) / 1000),
+            'duration': str((item.get('duration_ms') or 0) / 1000),
+            'random': '1' if current.get('shuffle_state') else '0',
+            'repeat': '1' if repeat_state != 'off' else '0',
+            'single': '1' if repeat_state == 'track' else '0',
+        })
+        return status
+
+    def _status_poll(self):
+        if not components.player.arbiter.is_active('spotify'):
+            return
+        status = self._build_status()
+        if status is not None:
+            publishing.get_publisher().send('playerstatus', status)
+
+    def _publish_status(self, state_hint: str = None):
+        """Publish the player status right away (called after transport commands)
+
+        :param state_hint: the state the command just produced; the Web API
+            often still reports the old state for a moment, so the known
+            outcome overrides it until the next poll
+        """
+        if not components.player.arbiter.is_active('spotify'):
+            return
+        status = self._build_status()
+        if status is None:
+            return
+        if state_hint is not None and status['state'] != 'stop':
+            status['state'] = state_hint
+        publishing.get_publisher().send('playerstatus', status)
 
     # ------------------------------------------------------------------
     # Auth / config RPC methods
@@ -342,11 +437,13 @@ class PlayerSpotify:
         """Resume playback on the configured Spotify device"""
         if not self._require_sp('play'):
             return
+        self._claim_active()
         with self._lock:
             try:
                 self._sp.start_playback(device_id=self.device_id)
             except Exception as e:
                 logger.error(f"play(): {e}")
+        self._publish_status(state_hint='play')
 
     @plugs.tag
     def stop(self):
@@ -356,10 +453,13 @@ class PlayerSpotify:
                 self._sp.pause_playback(device_id=self.device_id)
             except Exception as e:
                 logger.error(f"stop(): {e}")
+        self._publish_status(state_hint='pause')
 
     @plugs.tag
     def pause(self, state: int = 1):
         """Pause (state=1) or resume (state=0) playback"""
+        if state != 1:
+            self._claim_active()
         with self._lock:
             try:
                 if state == 1:
@@ -368,46 +468,120 @@ class PlayerSpotify:
                     self._sp.start_playback(device_id=self.device_id)
             except Exception as e:
                 logger.error(f"pause(state={state}): {e}")
+        self._publish_status(state_hint='pause' if state == 1 else 'play')
 
     @plugs.tag
     def toggle(self):
         """Toggle between play and pause"""
+        self._claim_active()
+        new_state = None
         with self._lock:
             try:
                 current = self._sp.current_playback()
                 if current and current.get('is_playing'):
                     self._sp.pause_playback(device_id=self.device_id)
+                    new_state = 'pause'
                 else:
                     self._sp.start_playback(device_id=self.device_id)
+                    new_state = 'play'
             except Exception as e:
                 logger.error(f"toggle(): {e}")
+        self._publish_status(state_hint=new_state)
 
     @plugs.tag
     def next(self):
         """Skip to the next track"""
+        self._claim_active()
         with self._lock:
             try:
                 self._sp.next_track(device_id=self.device_id)
             except Exception as e:
                 logger.error(f"next(): {e}")
+        self._publish_status()
 
     @plugs.tag
     def prev(self):
         """Skip to the previous track"""
+        self._claim_active()
         with self._lock:
             try:
                 self._sp.previous_track(device_id=self.device_id)
             except Exception as e:
                 logger.error(f"prev(): {e}")
+        self._publish_status()
 
     @plugs.tag
     def rewind(self):
         """Seek to the beginning of the current track"""
+        self._claim_active()
         with self._lock:
             try:
                 self._sp.seek_track(0, device_id=self.device_id)
             except Exception as e:
                 logger.error(f"rewind(): {e}")
+        self._publish_status()
+
+    @plugs.tag
+    def seek(self, new_time):
+        """Seek to a position in the current track
+
+        :param new_time: position in seconds (matches player.ctrl.seek semantics)
+        """
+        with self._lock:
+            try:
+                self._sp.seek_track(int(float(new_time) * 1000), device_id=self.device_id)
+            except Exception as e:
+                logger.error(f"seek({new_time}): {e}")
+        self._publish_status()
+
+    @plugs.tag
+    def shuffle(self, option='toggle'):
+        """Set shuffle mode: toggle, enable, disable (matches player.ctrl.shuffle semantics)"""
+        with self._lock:
+            try:
+                if option == 'toggle':
+                    current = self._sp.current_playback()
+                    state = not (current and current.get('shuffle_state'))
+                elif option == 'enable':
+                    state = True
+                elif option == 'disable':
+                    state = False
+                else:
+                    logger.error(f"'{option}' does not exist for 'shuffle'")
+                    return
+                self._sp.shuffle(state, device_id=self.device_id)
+            except Exception as e:
+                logger.error(f"shuffle({option}): {e}")
+        self._publish_status()
+
+    @plugs.tag
+    def repeat(self, option='toggle'):
+        """Set repeat mode: cycles off -> repeat (context) -> single (track) -> off
+
+        Accepts the same options as player.ctrl.repeat"""
+        with self._lock:
+            try:
+                current = self._sp.current_playback()
+                repeat_state = (current or {}).get('repeat_state', 'off')
+                if option == 'toggle':
+                    new_mode = {'off': 'context', 'context': 'track', 'track': 'off'}[repeat_state]
+                elif option == 'toggle_repeat':
+                    new_mode = 'context' if repeat_state == 'off' else 'off'
+                elif option == 'toggle_repeat_single':
+                    new_mode = 'track' if repeat_state != 'track' else 'off'
+                elif option == 'enable_repeat':
+                    new_mode = 'context'
+                elif option == 'enable_repeat_single':
+                    new_mode = 'track'
+                elif option == 'disable':
+                    new_mode = 'off'
+                else:
+                    logger.error(f"'{option}' does not exist for 'repeat'")
+                    return
+                self._sp.repeat(new_mode, device_id=self.device_id)
+            except Exception as e:
+                logger.error(f"repeat({option}): {e}")
+        self._publish_status()
 
     @plugs.tag
     def play_uri(self, uri: str) -> None:
@@ -417,6 +591,7 @@ class PlayerSpotify:
         :param uri: Spotify URI, e.g. 'spotify:playlist:37i9dQZF1DXcBWIGoYBM5M'
                     Supports track, album, and playlist URIs.
         """
+        self._claim_active()
         with self._lock:
             try:
                 parts = uri.split(':')
@@ -428,6 +603,7 @@ class PlayerSpotify:
                 logger.info(f"Playing Spotify URI: {uri}")
             except Exception as e:
                 logger.error(f"play_uri('{uri}'): {e}")
+        self._publish_status(state_hint='play')
 
     @plugs.tag
     def play_card(self, uri: str) -> None:
@@ -443,6 +619,10 @@ class PlayerSpotify:
         last = self.spotify_status['player_status']['last_played_uri']
         logger.debug(f"play_card: uri={uri}, last_played={last}")
         is_second_swipe = last == uri
+        # If another backend (e.g. MPD) played in between, treat as first swipe:
+        # the URI needs to be started again, not toggled
+        if not components.player.arbiter.is_active('spotify'):
+            is_second_swipe = False
 
         if self.second_swipe_action is not None and is_second_swipe:
             logger.debug("Spotify: second swipe action")
