@@ -184,16 +184,37 @@ playerspotify:
 
 ---
 
+## Unified playback engine
+
+MPD and Spotify are coordinated by the *player arbiter*
+(`components.player.PlayerArbiter`): exactly one backend is the **active player**
+at any time. A backend claims the active slot right before it starts playback
+(`play_card`, `play_uri`, `play_folder`, ...); the arbiter then silences the other
+backend, so the two never play simultaneously.
+
+Consequences:
+
+- **One entry point** — the webapp, RFID cards and GPIO keep calling
+  `player.ctrl.*`. While Spotify is the active player, the transport commands
+  (`play`, `pause`, `toggle`, `next`, `prev`, `seek`, `rewind`, `stop`, `shuffle`,
+  `repeat`) are routed to `spotify.ctrl.*` automatically
+  (see `route_to_active_player` in `playermpd`).
+- **One status topic** — the active backend owns the `playerstatus` pub/sub topic.
+  Spotify publishes a normalized, MPD-compatible payload (`state`, `songid`,
+  `title`, `artist`, `album`, `elapsed`, `duration`, `random`, `repeat`, `single`,
+  plus `player: spotify`), so the main player screen shows and controls whatever
+  is playing. Immediately after each transport command the fresh state is
+  published; a 2 s poll keeps it in sync while playing.
+- **Second swipe stays intuitive** — when the other backend played in between,
+  a card swipe counts as first swipe again (playback restarts instead of toggling).
+
 ## Known Limitations & Future Work
 
-- **No webapp player integration** — Spotify status is not shown in the main player UI,
-  only in the Settings panel. A future addition could publish playback state to the
-  pub/sub system so the player screen can display the current Spotify track.
 - **Token expiry** — spotipy handles refresh automatically as long as a refresh token
   exists. If the refresh token ever expires (rare), the user must re-authorise via the UI.
 - **Single device** — the plugin targets one device at a time. Switching devices mid-session
   requires going to Settings.
-- **No shuffle/repeat from UI** — `shuffle` and `repeat` are not yet wired for Spotify
-  (Spotify's API supports them; just not implemented yet).
+- **No cover art for Spotify** — the player screen shows the placeholder icon; the
+  album art URL from the Web API is not yet wired into the cover cache.
 - **raspotify recommended** — without raspotify, Spotify must be open on some other device
   for playback to work. With raspotify the Pi itself is the speaker.

@@ -105,6 +105,22 @@ logger = logging.getLogger('jb.PlayerMPD')
 cfg = jukebox.cfghandler.get_handler('jukebox')
 
 
+def route_to_active_player(func):
+    """Decorator for transport commands: forward to the active player backend
+
+    playermpd is registered as ``player.ctrl`` and thereby receives all
+    transport commands from the webapp, RFID cards and GPIO. When another
+    backend (e.g. Spotify) is the active player, the command is executed
+    there instead of on MPD (see :class:`components.player.PlayerArbiter`)."""
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        handled, result = components.player.arbiter.route_from_default(func.__name__, *args, **kwargs)
+        if handled:
+            return result
+        return func(self, *args, **kwargs)
+    return wrapper
+
+
 class MpdLock:
     def __init__(self, client: mpd.MPDClient, host: str, port: int):
         self._lock = threading.RLock()
@@ -230,6 +246,17 @@ class PlayerMPD:
                                                                  self.mpd_status_poll_interval, self._mpd_status_poll)
         self.status_thread.start()
 
+        # Take part in the unified playback engine: MPD is the default backend
+        # behind player.ctrl and gets silenced when e.g. Spotify starts playing
+        components.player.arbiter.register_backend('mpd', self)
+
+    def on_deactivate(self):
+        """Called by the player arbiter when another backend becomes the active player"""
+        # direct client call: must not route back through the arbiter
+        if self.mpd_status.get('state') == 'play':
+            logger.debug("Pausing MPD playback - another player backend became active")
+            self.mpd_retry_with_mutex(self.mpd_client.pause, 1)
+
     def exit(self):
         logger.debug("Exit routine of playermpd started")
         self.status_is_closing = True
@@ -322,7 +349,11 @@ class PlayerMPD:
             del self.mpd_status['volume']
         except KeyError:
             pass
-        publishing.get_publisher().send('playerstatus', self.mpd_status)
+        # The 'playerstatus' topic is owned by the active backend of the
+        # unified playback engine - only publish while that is MPD
+        if components.player.arbiter.is_active('mpd'):
+            self.mpd_status['player'] = 'mpd'
+            publishing.get_publisher().send('playerstatus', self.mpd_status)
 
     # MPD can play absolute paths but can find songs in its database only by relative path
     # This function aims to prepare the song_url accordingly
@@ -351,16 +382,19 @@ class PlayerMPD:
         return state
 
     @plugs.tag
+    @route_to_active_player
     def play(self):
         with self.mpd_lock:
             self.mpd_client.play()
 
     @plugs.tag
+    @route_to_active_player
     def stop(self):
         with self.mpd_lock:
             self.mpd_client.stop()
 
     @plugs.tag
+    @route_to_active_player
     def pause(self, state: int = 1):
         """Enforce pause to state (1: pause, 0: resume)
 
@@ -371,6 +405,7 @@ class PlayerMPD:
             self.mpd_client.pause(state)
 
     @plugs.tag
+    @route_to_active_player
     def prev(self):
         logger.debug("Prev")
         if self.mpd_status['state'] == 'stop':
@@ -389,6 +424,7 @@ class PlayerMPD:
             self.mpd_client.play(max(0, int(self.mpd_status['pos']) - 1))
 
     @plugs.tag
+    @route_to_active_player
     def next(self):
         """Play next track in current playlist"""
         logger.debug("Next")
@@ -417,11 +453,13 @@ class PlayerMPD:
             self.mpd_client.play(pos)
 
     @plugs.tag
+    @route_to_active_player
     def seek(self, new_time):
         with self.mpd_lock:
             self.mpd_client.seekcur(new_time)
 
     @plugs.tag
+    @route_to_active_player
     def rewind(self):
         """
         Re-start current playlist from first track
@@ -442,6 +480,7 @@ class PlayerMPD:
             self.play_folder(self.music_player_status['player_status']['last_played_folder'])
 
     @plugs.tag
+    @route_to_active_player
     def toggle(self):
         """Toggle pause state, i.e. do a pause / resume depending on current state"""
         with self.mpd_lock:
@@ -465,6 +504,7 @@ class PlayerMPD:
         self.mpd_retry_with_mutex(self.mpd_client.random, 1 if random else 0)
 
     @plugs.tag
+    @route_to_active_player
     def shuffle(self, option='toggle'):
         if option == 'toggle':
             if self.mpd_status['random'] == '0':
@@ -495,6 +535,7 @@ class PlayerMPD:
             self.mpd_client.single(single)
 
     @plugs.tag
+    @route_to_active_player
     def repeat(self, option='toggle'):
         if option == 'toggle':
             if self.mpd_status['repeat'] == '0':
@@ -545,6 +586,7 @@ class PlayerMPD:
 
     @plugs.tag
     def play_single(self, song_url):
+        components.player.arbiter.claim_active('mpd')
         with self.mpd_lock:
             self.mpd_client.clear()
             self.mpd_client.addid(song_url)
@@ -552,6 +594,7 @@ class PlayerMPD:
 
     @plugs.tag
     def resume(self):
+        components.player.arbiter.claim_active('mpd')
         with self.mpd_lock:
             songpos = self.current_folder_status["CURRENTSONGPOS"]
             elapsed = self.current_folder_status["ELAPSED"]
@@ -583,6 +626,10 @@ class PlayerMPD:
         logger.debug(f"last_played_folder = {self.music_player_status['player_status']['last_played_folder']}")
         with self.mpd_lock:
             is_second_swipe = self.music_player_status['player_status']['last_played_folder'] == folder
+        # If another backend (e.g. Spotify) played in between, treat as first swipe:
+        # the folder needs to be started again, not toggled
+        if not components.player.arbiter.is_active('mpd'):
+            is_second_swipe = False
         if self.second_swipe_action is not None and is_second_swipe:
             logger.debug('Calling second swipe action')
 
@@ -644,6 +691,7 @@ class PlayerMPD:
         :param recursive: Add folder recursively
         """
         # TODO: This changes the current state -> Need to save last state
+        components.player.arbiter.claim_active('mpd')
         with self.mpd_lock:
             logger.info(f"Play folder: '{folder}'")
             self.mpd_client.clear()
@@ -678,6 +726,7 @@ class PlayerMPD:
         :param albumartist: Artist of the Album provided by MPD database
         :param album: Album name provided by MPD database
         """
+        components.player.arbiter.claim_active('mpd')
         with self.mpd_lock:
             logger.info(f"Play album: '{album}' by '{albumartist}")
             self.mpd_client.clear()
