@@ -32,6 +32,7 @@ import jukebox.plugs as plugs
 import jukebox.multitimer as multitimer
 import jukebox.publishing as publishing
 from jukebox.NvManager import nv_manager
+from . import librespot_seeder
 from .device_resolver import resolve_device_id
 
 logger = logging.getLogger('jb.PlayerSpotify')
@@ -111,9 +112,20 @@ class PlayerSpotify:
         self.device_name = cfg.setndefault('playerspotify', 'device_name', value='Phoniebox')
         self._resolved_device_id = None
 
+        # 'streaming' allows handing the token to librespot for auto-login
         self._scope = ('user-read-playback-state '
                        'user-modify-playback-state '
-                       'user-read-currently-playing')
+                       'user-read-currently-playing '
+                       'streaming')
+
+        # Automatic librespot login: logs the librespot instance on the Pi
+        # into the Spotify account with the jukebox's own OAuth token, so the
+        # device does not need to be activated from a phone/desktop app once
+        self._librespot_auto_login = cfg.setndefault('playerspotify', 'librespot', 'auto_login', value=True)
+        self._librespot_cache = cfg.setndefault('playerspotify', 'librespot', 'cache_dir',
+                                                value='~/.cache/librespot')
+        self._librespot_service = cfg.setndefault('playerspotify', 'librespot', 'service',
+                                                  value='librespot.service')
 
         self._lock = threading.RLock()
         self._oauth_server = None
@@ -171,6 +183,7 @@ class PlayerSpotify:
             self._start_auth_server()
         else:
             logger.info("Spotify player initialised (authenticated)")
+            self._seed_librespot_async()
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -236,8 +249,68 @@ class PlayerSpotify:
         try:
             self._auth_manager.get_access_token(code, as_dict=False)
             logger.info("Spotify: OAuth token obtained — player is now active")
+            self._seed_librespot_async()
         except Exception as e:
             logger.error(f"Spotify: failed to exchange auth code: {e}")
+
+    def _seed_librespot_async(self):
+        """Log the local librespot into the Spotify account (background thread)
+
+        Removes the need to activate the device once from a phone/desktop
+        Spotify app: librespot gets the jukebox's own OAuth token and stores
+        reusable credentials, so it reconnects by itself from then on.
+        """
+        if not self._librespot_auto_login or self._auth_manager is None:
+            return
+        threading.Thread(target=self._seed_librespot, name='spotify-librespot-seed',
+                         daemon=True).start()
+
+    def _seed_librespot(self):
+        try:
+            binary = librespot_seeder.find_librespot()
+            if binary is None:
+                logger.debug("librespot auto-login: librespot not installed - skipping "
+                             "(run setup_librespot.inc.sh for playback on the Pi)")
+                return
+            if librespot_seeder.has_cached_credentials(self._librespot_cache):
+                logger.debug("librespot auto-login: credentials already cached - nothing to do")
+                return
+            if not librespot_seeder.supports_access_token(binary):
+                logger.warning("librespot auto-login: the installed librespot is too old for "
+                               "--access-token (needs v0.5+). Update it, or activate the device "
+                               "once by selecting it in a Spotify app on the same network.")
+                return
+            token_info = self._auth_manager.get_cached_token()
+            if not token_info:
+                return
+            if 'streaming' not in (token_info.get('scope') or ''):
+                logger.warning("librespot auto-login: the Spotify token lacks the 'streaming' "
+                               "permission. Disconnect and re-connect Spotify in the web UI "
+                               "(Settings → Spotify) to grant it.")
+                return
+            logger.info(f"librespot auto-login: logging device '{self.device_name}' "
+                        "into the Spotify account...")
+            if librespot_seeder.seed(binary, token_info['access_token'],
+                                     self._librespot_cache, self.device_name):
+                self._restart_librespot_service()
+                # Force a fresh device lookup - the device appears on the account now
+                self._resolved_device_id = None
+                logger.info("librespot auto-login: success - the jukebox is now a "
+                            "Spotify Connect device")
+            else:
+                logger.warning("librespot auto-login failed. Fallback: select the device "
+                               f"'{self.device_name}' once in a Spotify app on the same network.")
+        except Exception as e:
+            logger.warning(f"librespot auto-login failed: {e.__class__.__name__}: {e}")
+
+    def _restart_librespot_service(self):
+        """Restart the librespot user service so it picks up the new credentials"""
+        import subprocess
+        try:
+            subprocess.run(['systemctl', '--user', 'restart', self._librespot_service],
+                           check=False, timeout=30, capture_output=True)
+        except Exception as e:
+            logger.debug(f"Could not restart {self._librespot_service}: {e}")
 
     def exit(self):
         self._stop_auth_server()
