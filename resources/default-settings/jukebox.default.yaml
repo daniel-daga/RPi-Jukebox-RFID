@@ -164,7 +164,16 @@ playerspotify:
   client_secret:
   redirect_uri: http://localhost:8888/callback
   token_cache: ../../shared/settings/.spotify_token
+  # Spotify Connect device to play on:
+  # - device_id: explicit device (set via web UI Settings → Spotify → Device);
+  #              takes precedence when set
+  # - device_name: otherwise the device is looked up by this name — by default
+  #                the librespot instance on the Pi itself, which plays through
+  #                PulseAudio and thus follows the Jukebox output switching
+  #                (e.g. Bluetooth speaker). Setup: see
+  #                src/jukebox/components/playerspotify/setup_librespot.inc.sh
   device_id:
+  device_name: Phoniebox
   status_file: ../../shared/settings/spotify_player_status.json
   second_swipe_action:
     # Must be one of: toggle, play, skip, rewind, none

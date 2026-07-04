@@ -32,6 +32,7 @@ import jukebox.plugs as plugs
 import jukebox.multitimer as multitimer
 import jukebox.publishing as publishing
 from jukebox.NvManager import nv_manager
+from .device_resolver import resolve_device_id
 
 logger = logging.getLogger('jb.PlayerSpotify')
 cfg = jukebox.cfghandler.get_handler('jukebox')
@@ -104,6 +105,11 @@ class PlayerSpotify:
         # Device ID: prefer persisted value, then config, then None (= active device)
         self.device_id = (self.spotify_status.get('device_id')
                           or cfg.setndefault('playerspotify', 'device_id', value=None))
+        # Device name: when no explicit device_id is selected, the playback
+        # device is looked up by this name. Defaults to the librespot instance
+        # running on the Pi itself (see setup_librespot.inc.sh)
+        self.device_name = cfg.setndefault('playerspotify', 'device_name', value='Phoniebox')
+        self._resolved_device_id = None
 
         self._scope = ('user-read-playback-state '
                        'user-modify-playback-state '
@@ -400,8 +406,13 @@ class PlayerSpotify:
 
     @plugs.tag
     def set_device(self, device_id) -> None:
-        """Persist the Spotify Connect device to use for playback (None = active device)"""
+        """Persist the Spotify Connect device to use for playback
+
+        None = no explicit device: the device is then resolved by the
+        configured device_name (falling back to the account's active device)
+        """
         self.device_id = device_id or None
+        self._resolved_device_id = None
         self.spotify_status['device_id'] = self.device_id
         self.nvm.save_all()
         logger.info(f"Spotify: device set to {self.device_id!r}")
@@ -432,6 +443,47 @@ class PlayerSpotify:
             return False
         return True
 
+    def _playback_device(self, refresh: bool = False):
+        """Return the device id to start playback on
+
+        An explicitly selected device_id (web UI / config) always wins.
+        Otherwise the device is looked up by the configured device_name —
+        typically the librespot instance on the Pi itself — so playback works
+        without any device being 'active' on the account. Returns None when
+        nothing matches (the Web API then targets the active device).
+        """
+        if self.device_id:
+            return self.device_id
+        if not self.device_name:
+            return None
+        if refresh or self._resolved_device_id is None:
+            try:
+                devices = self._sp.devices().get('devices', [])
+            except Exception as e:
+                logger.debug(f"_playback_device(): device list failed: {e}")
+                return self._resolved_device_id
+            self._resolved_device_id = resolve_device_id(devices, self.device_name)
+            if self._resolved_device_id is None:
+                logger.warning(f"Spotify: no Connect device named '{self.device_name}' found. "
+                               f"Available: {[d.get('name') for d in devices]}. "
+                               "Is librespot running on the Pi?")
+        return self._resolved_device_id
+
+    def _start_playback(self, **kwargs):
+        """start_playback with device resolution and one retry
+
+        A cached device id can go stale when librespot restarts; on failure
+        the device is looked up again and the call retried once.
+        """
+        device = self._playback_device()
+        try:
+            self._sp.start_playback(device_id=device, **kwargs)
+        except Exception:
+            refreshed = self._playback_device(refresh=True)
+            if refreshed == device:
+                raise
+            self._sp.start_playback(device_id=refreshed, **kwargs)
+
     @plugs.tag
     def play(self):
         """Resume playback on the configured Spotify device"""
@@ -440,7 +492,7 @@ class PlayerSpotify:
         self._claim_active()
         with self._lock:
             try:
-                self._sp.start_playback(device_id=self.device_id)
+                self._start_playback()
             except Exception as e:
                 logger.error(f"play(): {e}")
         self._publish_status(state_hint='play')
@@ -465,7 +517,7 @@ class PlayerSpotify:
                 if state == 1:
                     self._sp.pause_playback(device_id=self.device_id)
                 else:
-                    self._sp.start_playback(device_id=self.device_id)
+                    self._start_playback()
             except Exception as e:
                 logger.error(f"pause(state={state}): {e}")
         self._publish_status(state_hint='pause' if state == 1 else 'play')
@@ -482,7 +534,7 @@ class PlayerSpotify:
                     self._sp.pause_playback(device_id=self.device_id)
                     new_state = 'pause'
                 else:
-                    self._sp.start_playback(device_id=self.device_id)
+                    self._start_playback()
                     new_state = 'play'
             except Exception as e:
                 logger.error(f"toggle(): {e}")
@@ -597,9 +649,9 @@ class PlayerSpotify:
                 parts = uri.split(':')
                 uri_type = parts[1] if len(parts) >= 2 else 'unknown'
                 if uri_type == 'track':
-                    self._sp.start_playback(device_id=self.device_id, uris=[uri])
+                    self._start_playback(uris=[uri])
                 else:
-                    self._sp.start_playback(device_id=self.device_id, context_uri=uri)
+                    self._start_playback(context_uri=uri)
                 logger.info(f"Playing Spotify URI: {uri}")
             except Exception as e:
                 logger.error(f"play_uri('{uri}'): {e}")

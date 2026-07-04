@@ -59,9 +59,21 @@ playerspotify:
 
 ---
 
-## 5. Select a Playback Device
+## 5. Playback Device
 
-In **Settings → Spotify → Device**, pick your target speaker (e.g. the Pi itself if running spotifyd, or your phone for testing).
+To have the audio come out of the Pi itself (headphone jack, HiFiBerry, or a
+Bluetooth speaker), install librespot with the PulseAudio backend:
+
+```bash
+bash src/jukebox/components/playerspotify/setup_librespot.inc.sh
+```
+
+The Pi then shows up as Spotify Connect device **Phoniebox** and is targeted
+automatically (config key `playerspotify.device_name`). Full guide including
+Bluetooth speaker routing: [Spotify on a Bluetooth Speaker](documentation/builders/spotify-bluetooth.md).
+
+Alternatively pick an explicit device in **Settings → Spotify → Device**
+(e.g. your phone for testing) — an explicit choice overrides the name lookup.
 
 ---
 
