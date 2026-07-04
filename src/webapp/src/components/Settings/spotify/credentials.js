@@ -12,8 +12,9 @@ import {
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 
 import request from '../../../utils/request';
+import { getSuggestedRedirectUri, isDefaultRedirectUri } from './utils';
 
-const SpotifyCredentials = () => {
+const SpotifyCredentials = ({ onSaved }) => {
   const { t } = useTranslation();
 
   const [config, setConfig] = useState(null);  // null = loading
@@ -29,7 +30,10 @@ const SpotifyCredentials = () => {
       if (!error && result) {
         setConfig(result);
         setClientId(result.client_id || '');
-        setRedirectUri(result.redirect_uri || '');
+        // Suggest the jukebox's own address while the URI was never set
+        setRedirectUri(isDefaultRedirectUri(result.redirect_uri)
+          ? getSuggestedRedirectUri()
+          : result.redirect_uri);
       }
     };
     load();
@@ -53,6 +57,7 @@ const SpotifyCredentials = () => {
     setClientSecret('');
     setIsSaving(false);
     setSaved(true);
+    if (onSaved) onSaved();
   };
 
   if (config === null) {
