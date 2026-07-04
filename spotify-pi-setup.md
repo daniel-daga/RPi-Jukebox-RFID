@@ -12,43 +12,25 @@ e.g. `http://192.168.1.42:8888/callback`. Keep the existing ones, just add this 
 
 ---
 
-## 2. Install spotipy on the Pi
+## 2. Run the setup script on the Pi
 
 ```bash
 cd /home/pi/RPi-Jukebox-RFID
 bash src/jukebox/components/playerspotify/setup.inc.sh
 ```
 
-Or manually:
+This single script installs spotipy, enables the `playerspotify` module in
+`shared/settings/jukebox.yaml`, and sets up librespot as a user service with
+the PulseAudio backend — the Pi itself becomes the Spotify playback device
+(Connect device name **Phoniebox**) and its audio follows the Jukebox output
+switching, including a Bluetooth speaker as secondary output.
 
-```bash
-pip install spotipy
-```
-
----
-
-## 3. Enable the module in jukebox.yaml
-
-In `shared/settings/jukebox.yaml`, add under `modules.named`:
-
-```yaml
-modules:
-  named:
-    spotify: playerspotify
-```
-
-Also add credentials (or do it via the web UI in step 4):
-
-```yaml
-playerspotify:
-  client_id: "your-client-id"
-  client_secret: "your-client-secret"
-  redirect_uri: "http://<pi-ip>:8888/callback"
-```
+Set `SKIP_LIBRESPOT=1` if you only want remote control of other devices.
+Then restart the jukebox service.
 
 ---
 
-## 4. Authenticate via the Web UI
+## 3. Authenticate via the Web UI
 
 1. Open the Jukebox web UI in your browser → **Settings → Spotify**
 2. Enter Client ID, Client Secret, and set Redirect URI to `http://<pi-ip>:8888/callback`
@@ -57,15 +39,18 @@ playerspotify:
 5. Approve access — the tab shows "Spotify connected!"
 6. The Connect section should now show a green checkmark and your username
 
+That's it for the playback device: the Jukebox now logs the librespot device
+into your Spotify account automatically (no phone needed) and targets it by
+name (config key `playerspotify.device_name`). To play elsewhere instead,
+pick an explicit device in **Settings → Spotify → Device** — an explicit
+choice overrides the name lookup.
+
+Full guide including Bluetooth speaker routing:
+[Spotify on a Bluetooth Speaker](documentation/builders/spotify-bluetooth.md).
+
 ---
 
-## 5. Select a Playback Device
-
-In **Settings → Spotify → Device**, pick your target speaker (e.g. the Pi itself if running spotifyd, or your phone for testing).
-
----
-
-## 6. Test an RFID Card
+## 4. Test an RFID Card
 
 In `shared/settings/cards.yaml`, add an entry:
 
@@ -86,6 +71,7 @@ Swipe the card — music should start. Swipe again — toggles pause/play (defau
 | Symptom | Fix |
 |---|---|
 | "redirect_uri: Not matching configuration" | URI in Spotify dashboard doesn't match `redirect_uri` in jukebox.yaml exactly |
-| "No active device" | Open Spotify on the target device first, or set a device ID in Settings → Spotify → Device |
+| "No active device" / device not found | Check `systemctl --user status librespot.service`; restart the jukebox so the automatic librespot login runs again (watch the log for `librespot auto-login`) |
+| Log says token lacks the 'streaming' permission | Settings → Spotify → Disconnect, then Connect again, then restart the jukebox |
 | Plugin not loading | Check `playerspotify` is under `modules.named` in jukebox.yaml and spotipy is installed |
 | Token expired | Settings → Spotify → Disconnect, then Connect again |
