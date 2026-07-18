@@ -100,12 +100,12 @@ src/jukebox/
   - **Use IP `192.168.50.8` not hostname** — `phoniebox` hostname doesn't always resolve in paramiko; `phoniebox.local` works for ping but may fail in scripts
   - **Use `py -c "..."` inline for short commands** — running script files (`.py`) via PowerShell causes the tool to background the command. Inline `py -c "single-line"` runs in foreground. For multi-step tasks that need output, keep the entire script on one line.
   - Avoid parentheses in `echo` strings joined with `;` — they trigger bash subshell syntax errors
-  - **MPD polling interval is 250ms** — MPD publishes playerstatus every 250ms; Spotify publishes every 2s. The webapp PlayerContext guards against MPD overriding Spotify state (see `src/webapp/src/context/player/index.js`)
+  - **MPD polling interval is 250ms** — MPD publishes playerstatus every 250ms; the Spotify plugin polls the Spotify Web API every 2s and publishes 'playerstatus' only while it is the active backend. The **player arbiter** (`src/jukebox/components/player/__init__.py`) ensures exactly one backend publishes status at a time — MPD is silenced while Spotify is active, and transport commands (`play`/`pause`/`next`/`prev`/`seek`) are routed to the active backend
 - **Pi Services:** All jukebox services run as **user services** under `pi`; use `systemctl --user` not `sudo systemctl`
   - `jukebox-daemon.service` — main jukebox daemon (RPC on ZMQ tcp:5555, publisher on 5557/5558)
-  - `go-librespot.service` — Spotify Connect + local playback API on http://127.0.0.1:3678
+  - `librespot.service` — Spotify Connect **playback device** on the Pi (device name `Phoniebox`; plays through PulseAudio). Auto-logged-in with the jukebox's own OAuth token after "Connect with Spotify", so it never needs activating from a phone/desktop app — see `src/jukebox/components/playerspotify/setup_librespot.inc.sh`. The Spotify plugin itself drives playback via the **Spotify Web API** (spotipy + OAuth), not a local HTTP API
   - `mpd.service` — Music Player Daemon
-  - `pulseaudio.service` — PulseAudio sound server (both MPD and go-librespot route through it)
+  - `pulseaudio.service` — PulseAudio sound server (both MPD and librespot route through it)
   - `journalctl --user -u <service>` for user service logs (system journal may show nothing)
 - **Webapp Deployment:** Build the webapp locally (`src/webapp/`), then copy the `build/` folder to the Pi over SSH/SCP — do NOT build on the Pi
 
