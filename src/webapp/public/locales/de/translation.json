@@ -315,10 +315,53 @@
     },
     "spotify": {
       "title": "Spotify",
-      "status": {
-        "connected-as": "Verbunden als {{user}} auf {{device}}",
-        "not-connected": "Nicht authentifiziert",
-        "reauth-hint": "Zum erneuten Authentifizieren go-librespot neu starten und die URL aus den Service-Logs aufrufen."
+      "unavailable": "Das Spotify-Modul läuft nicht. Stelle sicher, dass 'spotify: playerspotify' unter modules.named in der jukebox.yaml aktiviert ist, und starte die Jukebox neu.",
+      "setup": {
+        "intro": "Verbinde die Jukebox mit deinem Spotify-Konto (Premium erforderlich). Die gesamte Einrichtung passiert direkt hier — kein Terminal nötig.",
+        "step-app": "Spotify-App erstellen",
+        "step-credentials": "App-Zugangsdaten eintragen",
+        "step-connect": "Konto verbinden",
+        "app-instruction-1": "Melde dich an und erstelle eine App (beliebiger Name) unter",
+        "app-instruction-2": "Füge in den App-Einstellungen diese Redirect-URI hinzu:",
+        "app-loopback-hint": "Falls Spotify diese Adresse nicht akzeptiert, trage stattdessen diese ein — das Ergebnis fügst du dann im letzten Schritt manuell ein:",
+        "app-instruction-3": "Speichere die App und halte Client-ID und Client-Secret für den nächsten Schritt bereit.",
+        "copy": "In die Zwischenablage kopieren",
+        "copied": "Kopiert!",
+        "next": "Weiter",
+        "back": "Zurück"
+      },
+      "credentials": {
+        "title": "App-Zugangsdaten",
+        "hint": "Trage hier Client-ID und Client-Secret deiner Spotify-App ein.",
+        "client-id": "Client-ID",
+        "client-secret": "Client-Secret",
+        "secret-set": "Secret bereits hinterlegt",
+        "secret-unchanged": "Leer lassen, um das vorhandene Secret beizubehalten",
+        "redirect-uri": "Redirect-URI",
+        "redirect-uri-hint": "Muss mit einer Redirect-URI in deinen Spotify-App-Einstellungen übereinstimmen",
+        "saved": "Gespeichert!"
+      },
+      "connect": {
+        "connected-as": "Verbunden als {{user}}",
+        "not-connected": "Nicht verbunden",
+        "not-configured": "Trage zuerst deine App-Zugangsdaten ein und verbinde dich dann.",
+        "connect": "Mit Spotify verbinden",
+        "disconnect": "Trennen",
+        "waiting": "Warte auf Autorisierung…",
+        "open-link": "Falls der Browser nicht automatisch geöffnet wurde, hier klicken:",
+        "auth-link": "Spotify autorisieren",
+        "manual-hint": "Hat der Browser nach dem Bestätigen eine Fehlerseite angezeigt? Kopiere deren vollständige Adresse (sie enthält ?code=...) und füge sie hier ein:",
+        "manual-label": "Redirect-URL oder Code",
+        "manual-submit": "Absenden",
+        "manual-error": "Aus dieser Eingabe konnte kein gültiger Code gelesen werden. Kopiere die komplette Adresse aus dem Browser und versuche es erneut."
+      },
+      "device": {
+        "title": "Wiedergabegerät",
+        "hint": "Wähle das Spotify-Connect-Gerät aus, auf dem die Jukebox abspielen soll. Öffne Spotify zuerst auf einem Gerät, damit es hier erscheint.",
+        "label": "Gerät",
+        "active-device": "Aktives Gerät verwenden",
+        "refresh": "Aktualisieren",
+        "error": "Geräte konnten nicht geladen werden. Stelle sicher, dass Spotify verbunden ist."
       },
       "secondswipe": {
         "title": "Zweites-Karten-Aktion",

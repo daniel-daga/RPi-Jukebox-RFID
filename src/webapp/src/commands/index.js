@@ -293,7 +293,7 @@ const commands = {
     argKeys: ['settings'],
   },
 
-  // Spotify — card command (used in cards.yaml)
+  // Spotify — card command alias
   play_spotify: {
     _package: 'spotify',
     plugin: 'ctrl',
@@ -301,33 +301,49 @@ const commands = {
     argKeys: ['uri'],
   },
 
-  // Spotify — transport controls (routed from Player UI when Spotify is active)
-  spotifyPlay: {
-    _package: 'spotify',
-    plugin: 'ctrl',
-    method: 'play',
-  },
-  spotifyPause: {
-    _package: 'spotify',
-    plugin: 'ctrl',
-    method: 'pause',
-  },
-  spotifyPrev: {
-    _package: 'spotify',
-    plugin: 'ctrl',
-    method: 'prev',
-  },
-  spotifyNext: {
-    _package: 'spotify',
-    plugin: 'ctrl',
-    method: 'next',
-  },
-
   // Spotify — settings RPC methods
+  getSpotifyConfig: {
+    _package: 'spotify',
+    plugin: 'ctrl',
+    method: 'get_config',
+  },
+  setSpotifyConfig: {
+    _package: 'spotify',
+    plugin: 'ctrl',
+    method: 'set_config',
+    argKeys: ['client_id', 'client_secret', 'redirect_uri'],
+  },
   getSpotifyAuthStatus: {
     _package: 'spotify',
     plugin: 'ctrl',
     method: 'get_auth_status',
+  },
+  getSpotifyAuthUrl: {
+    _package: 'spotify',
+    plugin: 'ctrl',
+    method: 'get_auth_url',
+  },
+  submitSpotifyAuthCode: {
+    _package: 'spotify',
+    plugin: 'ctrl',
+    method: 'submit_auth_code',
+    argKeys: ['code_or_url'],
+  },
+  disconnectSpotify: {
+    _package: 'spotify',
+    plugin: 'ctrl',
+    method: 'disconnect',
+  },
+  getSpotifyDevices: {
+    _package: 'spotify',
+    plugin: 'ctrl',
+    method: 'list_devices',
+  },
+  setSpotifyDevice: {
+    _package: 'spotify',
+    plugin: 'ctrl',
+    method: 'set_device',
+    argKeys: ['device_id'],
   },
   getSpotifySecondSwipe: {
     _package: 'spotify',

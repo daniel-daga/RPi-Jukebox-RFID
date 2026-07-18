@@ -31,8 +31,6 @@ const Controls = () => {
     songIsScheduled
   } = state;
 
-  const isSpotify = playerstatus?.player === 'spotify';
-
   const toggleShuffle = () => {
     request('shuffle', { option: 'toggle' });
   }
@@ -40,11 +38,6 @@ const Controls = () => {
   const toggleRepeat = () => {
     request('repeat', { option: 'toggle' });
   }
-
-  const handlePlay = () => isSpotify ? request('spotifyPlay') : request('play');
-  const handlePause = () => isSpotify ? request('spotifyPause') : request('pause');
-  const handlePrev = () => isSpotify ? request('spotifyPrev') : request('prev_song');
-  const handleNext = () => isSpotify ? request('spotifyNext') : request('next_song');
 
   useEffect(() => {
     setState({
@@ -80,13 +73,13 @@ const Controls = () => {
       justifyContent="space-evenly"
     >
 
-      {/* Shuffle — hidden for Spotify */}
+      {/* Shuffle */}
       <IconButton
         aria-label={labelShuffle()}
         color={isShuffle ? 'primary' : undefined}
         onClick={toggleShuffle}
         size="large"
-        sx={{ ...iconStyles, visibility: isSpotify ? 'hidden' : 'visible' }}
+        sx={iconStyles}
         title={labelShuffle()}
       >
         <ShuffleRoundedIcon style={{ fontSize: 22 }} />
@@ -96,7 +89,7 @@ const Controls = () => {
       <IconButton
         aria-label={t('player.controls.prev_song')}
         disabled={!songIsScheduled}
-        onClick={handlePrev}
+        onClick={e => request('prev_song')}
         size="large"
         sx={iconStyles}
         title={t('player.controls.prev_song')}
@@ -108,7 +101,7 @@ const Controls = () => {
       {!isPlaying &&
         <IconButton
           aria-label={t('player.controls.play')}
-          onClick={handlePlay}
+          onClick={e => request('play')}
           disabled={!songIsScheduled}
           size="large"
           sx={iconStyles}
@@ -121,7 +114,7 @@ const Controls = () => {
       {isPlaying &&
         <IconButton
           aria-label={t('player.controls.pause')}
-          onClick={handlePause}
+          onClick={e => request('pause')}
           size="large"
           sx={iconStyles}
           title={t('player.controls.pause')}
@@ -134,7 +127,7 @@ const Controls = () => {
       <IconButton
         aria-label={t('player.controls.next_song')}
         disabled={!songIsScheduled}
-        onClick={handleNext}
+        onClick={e => request('next_song')}
         size="large"
         sx={iconStyles}
         title={t('player.controls.next_song')}
@@ -142,13 +135,13 @@ const Controls = () => {
         <SkipNextRoundedIcon style={{ fontSize: 35 }} />
       </IconButton>
 
-      {/* Repeat — hidden for Spotify */}
+      {/* Repeat */}
       <IconButton
         aria-label={labelRepeat()}
         color={isRepeat ? 'primary' : undefined}
         onClick={toggleRepeat}
         size="large"
-        sx={{ ...iconStyles, visibility: isSpotify ? 'hidden' : 'visible' }}
+        sx={iconStyles}
         title={labelRepeat()}
       >
         {

@@ -15,8 +15,6 @@ import request from '../../utils/request';
 const Player = () => {
   const { state: { playerstatus } } = useContext(PlayerContext);
   const { file } = playerstatus || {};
-  const isSpotify = playerstatus?.player === 'spotify';
-  const spotifyArt = playerstatus?.albumart;
 
   const [coverImage, setCoverImage] = useState(undefined);
   const [backgroundImage, setBackgroundImage] = useState('none');
@@ -27,27 +25,22 @@ const Player = () => {
 
   const { show_covers } = settings;
 
-  const setArt = (url) => {
-    setCoverImage(url);
-    setBackgroundImage([
-      'linear-gradient(to bottom, rgba(18, 18, 18, 0.5), rgba(18, 18, 18, 1))',
-      `url(${url})`
-    ].join(','));
-  };
-
   useEffect(() => {
-    if (isSpotify) {
-      if (spotifyArt) setArt(spotifyArt);
-      else { setCoverImage(undefined); setBackgroundImage('none'); }
-    } else if (file && show_covers) {
-      request('getSingleCoverArt', { song_url: file }).then(({ result }) => {
-        if (result) setArt(`/cover-cache/${result}`);
-      });
-    } else {
-      setCoverImage(undefined);
-      setBackgroundImage('none');
+    const getCoverArt = async () => {
+      const { result } = await request('getSingleCoverArt', { song_url: file });
+      if (result) {
+        setCoverImage(`/cover-cache/${result}`);
+        setBackgroundImage([
+          'linear-gradient(to bottom, rgba(18, 18, 18, 0.5), rgba(18, 18, 18, 1))',
+          `url(/cover-cache/${result})`
+        ].join(','));
+      };
     }
-  }, [file, isSpotify, spotifyArt]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    if (file && show_covers) {
+      getCoverArt();
+    }
+  }, [file]);
 
   return (
     <Grid

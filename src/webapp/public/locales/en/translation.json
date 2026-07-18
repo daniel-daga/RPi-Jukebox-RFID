@@ -317,10 +317,53 @@
     },
     "spotify": {
       "title": "Spotify",
-      "status": {
-        "connected-as": "Connected as {{user}} on {{device}}",
-        "not-connected": "Not authenticated",
-        "reauth-hint": "To re-authenticate, restart go-librespot and visit the URL shown in the service logs."
+      "unavailable": "The Spotify module is not running. Make sure 'spotify: playerspotify' is enabled under modules.named in jukebox.yaml and restart the jukebox.",
+      "setup": {
+        "intro": "Connect the jukebox to your Spotify account (Premium required). The whole setup happens right here — no terminal needed.",
+        "step-app": "Create a Spotify app",
+        "step-credentials": "Enter app credentials",
+        "step-connect": "Connect your account",
+        "app-instruction-1": "Log in and create an app (any name) at",
+        "app-instruction-2": "In the app settings, add this Redirect URI:",
+        "app-loopback-hint": "If Spotify's dashboard rejects that address, add this one instead — you will then paste the result manually in the last step:",
+        "app-instruction-3": "Save the app and keep the Client ID and Client Secret at hand for the next step.",
+        "copy": "Copy to clipboard",
+        "copied": "Copied!",
+        "next": "Next",
+        "back": "Back"
+      },
+      "credentials": {
+        "title": "App Credentials",
+        "hint": "Paste the Client ID and Client Secret from your Spotify app here.",
+        "client-id": "Client ID",
+        "client-secret": "Client Secret",
+        "secret-set": "Secret already set",
+        "secret-unchanged": "Leave blank to keep the existing secret",
+        "redirect-uri": "Redirect URI",
+        "redirect-uri-hint": "Must match a Redirect URI in your Spotify app settings",
+        "saved": "Saved!"
+      },
+      "connect": {
+        "connected-as": "Connected as {{user}}",
+        "not-connected": "Not connected",
+        "not-configured": "Enter your App Credentials first, then connect.",
+        "connect": "Connect with Spotify",
+        "disconnect": "Disconnect",
+        "waiting": "Waiting for authorisation…",
+        "open-link": "If the browser didn't open automatically, click here:",
+        "auth-link": "Authorise Spotify",
+        "manual-hint": "Did the browser show an error page after you approved? Copy its full address (it contains ?code=...) and paste it here:",
+        "manual-label": "Redirect URL or code",
+        "manual-submit": "Submit",
+        "manual-error": "Could not read a valid code from this input. Copy the complete address from the browser and try again."
+      },
+      "device": {
+        "title": "Playback Device",
+        "hint": "Select which Spotify Connect device the jukebox should play on. Open Spotify on a device first to make it appear here.",
+        "label": "Device",
+        "active-device": "Use active device",
+        "refresh": "Refresh",
+        "error": "Could not load devices. Make sure Spotify is connected."
       },
       "secondswipe": {
         "title": "Second Swipe Action",
