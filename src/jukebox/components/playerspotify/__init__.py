@@ -343,7 +343,7 @@ class PlayerSpotify:
 
         :return: status dict, or None on a transient Web API error
         """
-        status = {'player': 'spotify', 'state': 'stop'}
+        status = {'player': 'spotify', 'state': 'stop', 'albumart': ''}
         if self._sp is None:
             return status
         try:
@@ -355,6 +355,14 @@ class PlayerSpotify:
         if not current:
             return status
         item = current.get('item') or {}
+        album = item.get('album') or {}
+        images = album.get('images')
+        if isinstance(images, list):
+            status['albumart'] = next(
+                (image['url'] for image in images
+                 if isinstance(image, dict) and image.get('url')),
+                '',
+            )
         repeat_state = current.get('repeat_state', 'off')
         status.update({
             'state': 'play' if current.get('is_playing') else 'pause',
@@ -363,7 +371,7 @@ class PlayerSpotify:
             'file': item.get('uri', ''),
             'title': item.get('name', ''),
             'artist': ', '.join(a['name'] for a in item.get('artists', [])),
-            'album': (item.get('album') or {}).get('name', ''),
+            'album': album.get('name', ''),
             'elapsed': str((current.get('progress_ms') or 0) / 1000),
             'duration': str((item.get('duration_ms') or 0) / 1000),
             'random': '1' if current.get('shuffle_state') else '0',
