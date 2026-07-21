@@ -57,7 +57,7 @@ test('uses published album art directly without requesting local cover art', () 
 test('falls back to cached cover art for a local file', async () => {
   request.mockResolvedValue({ result: 'artist/album.jpg' });
 
-  renderPlayer({ playerstatus: { file: 'Artist/Album/song.mp3' } });
+  renderPlayer({ playerstatus: { player: 'mpd', file: 'Artist/Album/song.mp3' } });
 
   expect(request).toHaveBeenCalledWith('getSingleCoverArt', {
     song_url: 'Artist/Album/song.mp3',
@@ -66,6 +66,15 @@ test('falls back to cached cover art for a local file', async () => {
     'src',
     '/cover-cache/artist/album.jpg'
   ));
+});
+
+test('does not request local cover art for a Spotify episode without album art', () => {
+  renderPlayer({
+    playerstatus: { player: 'spotify', file: 'spotify:episode:x', albumart: '' },
+  });
+
+  expect(request).not.toHaveBeenCalled();
+  expect(screen.queryByAltText('cover')).not.toBeInTheDocument();
 });
 
 test('clears stale cover and background when the next status has no art source', () => {
@@ -87,7 +96,7 @@ test('disabling covers clears current art and skips cover lookups', () => {
   });
 
   rerenderPlayer(view, {
-    playerstatus: { file: 'Artist/Album/song.mp3' },
+    playerstatus: { player: 'mpd', file: 'Artist/Album/song.mp3' },
     showCovers: false,
   });
 
@@ -102,7 +111,7 @@ test('ignores a late local-cover response after a newer status publishes album a
     resolveRequest = resolve;
   }));
   const view = renderPlayer({
-    playerstatus: { file: 'Artist/Album/old.mp3' },
+    playerstatus: { player: 'mpd', file: 'Artist/Album/old.mp3' },
   });
 
   rerenderPlayer(view, {

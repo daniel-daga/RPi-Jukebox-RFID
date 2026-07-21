@@ -14,7 +14,7 @@ import request from '../../utils/request';
 
 const Player = () => {
   const { state: { playerstatus } } = useContext(PlayerContext);
-  const { albumart, file } = playerstatus || {};
+  const { albumart, file, player } = playerstatus || {};
 
   const [coverImage, setCoverImage] = useState(undefined);
   const [backgroundImage, setBackgroundImage] = useState('none');
@@ -58,7 +58,7 @@ const Player = () => {
       clearCoverArt();
     } else if (albumart) {
       setCoverArt(albumart);
-    } else if (file) {
+    } else if (player === 'mpd' && file) {
       clearCoverArt();
       getCoverArt();
     } else {
@@ -68,7 +68,7 @@ const Player = () => {
     return () => {
       cancelled = true;
     };
-  }, [albumart, file, show_covers]);
+  }, [albumart, file, player, show_covers]);
 
   return (
     <Grid
