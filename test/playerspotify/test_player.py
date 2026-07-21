@@ -15,6 +15,7 @@ def _load_player_module():
     components = types.ModuleType('components')
     components.__path__ = []
     player = types.ModuleType('components.player')
+    player.arbiter = Mock()
     components.player = player
 
     jukebox = types.ModuleType('jukebox')
@@ -27,6 +28,7 @@ def _load_player_module():
     plugs.atexit = _identity_decorator
     multitimer = types.ModuleType('jukebox.multitimer')
     publishing = types.ModuleType('jukebox.publishing')
+    publishing.get_publisher = Mock(return_value=Mock())
     nvmanager = types.ModuleType('jukebox.NvManager')
     nvmanager.nv_manager = Mock()
     jukebox.cfghandler = cfghandler
@@ -165,3 +167,34 @@ def test_build_status_returns_none_on_transient_api_error():
     player = _player_with_playback(RuntimeError('temporary Spotify failure'))
 
     assert player._build_status() is None
+
+
+def test_status_poll_does_not_publish_when_spotify_is_inactive():
+    player = PlayerSpotify.__new__(PlayerSpotify)
+    player._build_status = Mock(return_value={'state': 'play'})
+    player_module.components.player.arbiter.is_active.return_value = False
+    publisher = player_module.publishing.get_publisher.return_value
+    publisher.reset_mock()
+    player_module.publishing.get_publisher.reset_mock()
+
+    player._status_poll()
+
+    player._build_status.assert_not_called()
+    player_module.publishing.get_publisher.assert_not_called()
+    publisher.send.assert_not_called()
+
+
+def test_status_poll_publishes_once_when_spotify_is_active():
+    status = {'player': 'spotify', 'state': 'play'}
+    player = PlayerSpotify.__new__(PlayerSpotify)
+    player._build_status = Mock(return_value=status)
+    player_module.components.player.arbiter.is_active.return_value = True
+    publisher = player_module.publishing.get_publisher.return_value
+    publisher.reset_mock()
+    player_module.publishing.get_publisher.reset_mock()
+
+    player._status_poll()
+
+    player._build_status.assert_called_once_with()
+    player_module.publishing.get_publisher.assert_called_once_with()
+    publisher.send.assert_called_once_with('playerstatus', status)
