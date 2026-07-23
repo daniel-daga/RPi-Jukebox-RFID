@@ -364,22 +364,75 @@ class PlayerSpotify:
                  if isinstance(image, dict) and image.get('url')),
                 '',
             )
+        track_id = item.get('uri') or item.get('id', '')
+        previous_track_id = getattr(self, '_status_track_id', None)
+        if previous_track_id is not None and track_id != previous_track_id:
+            self._state_override = None
+            self._frozen_progress_ms = None
+        self._status_track_id = track_id
+
         repeat_state = current.get('repeat_state', 'off')
+        duration_ms = max(0, item.get('duration_ms') or 0)
+        progress_ms = self._normalize_progress_ms(
+            item, current.get('progress_ms') or 0, duration_ms)
+
+        reported_state = 'play' if current.get('is_playing') else 'pause'
+        state_override = getattr(self, '_state_override', None)
+        if state_override in ('play', 'pause') and state_override == reported_state:
+            self._state_override = None
+            state_override = None
+        state = state_override or reported_state
+        if duration_ms and progress_ms >= duration_ms and repeat_state == 'off':
+            state = 'stop'
+            self._state_override = 'stop'
+            self._frozen_progress_ms = progress_ms
         status.update({
-            'state': 'play' if current.get('is_playing') else 'pause',
+            'state': state,
             # songid enables the transport buttons in the webapp
             'songid': item.get('id') or item.get('uri', ''),
             'file': item.get('uri', ''),
             'title': item.get('name', ''),
             'artist': ', '.join(a['name'] for a in item.get('artists', [])),
             'album': album.get('name', ''),
-            'elapsed': str((current.get('progress_ms') or 0) / 1000),
-            'duration': str((item.get('duration_ms') or 0) / 1000),
+            'elapsed': str(progress_ms / 1000),
+            'duration': str(duration_ms / 1000),
             'random': '1' if current.get('shuffle_state') else '0',
             'repeat': '1' if repeat_state != 'off' else '0',
             'single': '1' if repeat_state == 'track' else '0',
         })
         return status
+
+    def _normalize_progress_ms(self, item, progress_ms, duration_ms):
+        """Return progress within the track's valid range.
+
+        Spotify Connect can report progress with a large negative fixed offset
+        while the value itself continues advancing.  Anchor that offset at zero
+        for each track so the web seek bar still advances normally.
+        """
+        track_id = item.get('uri') or item.get('id', '')
+        if progress_ms < 0:
+            pending_seek_ms = getattr(self, '_pending_seek_ms', None)
+            if pending_seek_ms is not None:
+                self._progress_anchor_track = track_id
+                self._progress_anchor_ms = progress_ms - pending_seek_ms
+                self._pending_seek_ms = None
+            anchor_track = getattr(self, '_progress_anchor_track', None)
+            anchor_ms = getattr(self, '_progress_anchor_ms', None)
+            if track_id != anchor_track or anchor_ms is None or progress_ms < anchor_ms:
+                self._progress_anchor_track = track_id
+                self._progress_anchor_ms = progress_ms
+                anchor_ms = progress_ms
+            progress_ms -= anchor_ms
+        else:
+            self._progress_anchor_track = None
+            self._progress_anchor_ms = None
+            self._pending_seek_ms = None
+        progress_ms = min(duration_ms, max(0, progress_ms))
+        frozen_progress_ms = getattr(self, '_frozen_progress_ms', None)
+        if frozen_progress_ms is not None:
+            progress_ms = min(duration_ms, max(0, frozen_progress_ms))
+        self._last_normalized_progress_ms = progress_ms
+        return progress_ms
 
     def _status_poll(self):
         if not components.player.arbiter.is_active('spotify'):
@@ -397,6 +450,17 @@ class PlayerSpotify:
         """
         if not components.player.arbiter.is_active('spotify'):
             return
+        if state_hint is not None:
+            self._state_override = state_hint
+            if state_hint in ('pause', 'stop'):
+                last_progress_ms = getattr(self, '_last_normalized_progress_ms', None)
+                if last_progress_ms is not None:
+                    self._frozen_progress_ms = last_progress_ms
+            elif state_hint == 'play':
+                frozen_progress_ms = getattr(self, '_frozen_progress_ms', None)
+                if frozen_progress_ms is not None:
+                    self._pending_seek_ms = frozen_progress_ms
+                self._frozen_progress_ms = None
         status = self._build_status()
         if status is None:
             return
@@ -645,7 +709,7 @@ class PlayerSpotify:
         """Pause Spotify playback"""
         with self._lock:
             try:
-                self._sp.pause_playback(device_id=self.device_id)
+                self._sp.pause_playback(device_id=self._playback_device())
             except Exception as e:
                 logger.error(f"stop(): {e}")
         self._publish_status(state_hint='pause')
@@ -658,7 +722,7 @@ class PlayerSpotify:
         with self._lock:
             try:
                 if state == 1:
-                    self._sp.pause_playback(device_id=self.device_id)
+                    self._sp.pause_playback(device_id=self._playback_device())
                 else:
                     self._start_playback()
             except Exception as e:
@@ -673,8 +737,11 @@ class PlayerSpotify:
         with self._lock:
             try:
                 current = self._sp.current_playback()
-                if current and current.get('is_playing'):
-                    self._sp.pause_playback(device_id=self.device_id)
+                reported_state = ('play' if current and current.get('is_playing')
+                                  else 'pause')
+                effective_state = getattr(self, '_state_override', None) or reported_state
+                if effective_state == 'play':
+                    self._sp.pause_playback(device_id=self._playback_device())
                     new_state = 'pause'
                 else:
                     self._start_playback()
@@ -724,7 +791,18 @@ class PlayerSpotify:
         """
         with self._lock:
             try:
-                self._sp.seek_track(int(float(new_time) * 1000), device_id=self.device_id)
+                position_ms = int(float(new_time) * 1000)
+                self._sp.seek_track(
+                    position_ms,
+                    device_id=self._playback_device(),
+                )
+                # Affected Connect sessions acknowledge seeks but continue to
+                # report a negative, unseeked progress timeline. Re-anchor the
+                # next sample at the accepted seek position for coherent UI
+                # status while retaining Spotify's advancing clock delta.
+                self._pending_seek_ms = position_ms
+                if getattr(self, '_state_override', None) in ('pause', 'stop'):
+                    self._frozen_progress_ms = position_ms
             except Exception as e:
                 logger.error(f"seek({new_time}): {e}")
         self._publish_status()
@@ -791,6 +869,10 @@ class PlayerSpotify:
             try:
                 parts = uri.split(':')
                 uri_type = parts[1] if len(parts) >= 2 else 'unknown'
+                # Starting a URI begins it at zero even when Spotify keeps
+                # exposing the previous broken negative progress timeline.
+                self._pending_seek_ms = 0
+                self._frozen_progress_ms = None
                 if uri_type == 'track':
                     self._start_playback(uris=[uri])
                 else:

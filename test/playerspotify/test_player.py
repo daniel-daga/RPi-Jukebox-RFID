@@ -130,6 +130,169 @@ def test_build_status_normalizes_spotify_playback_and_albumart():
     }
 
 
+@pytest.mark.parametrize(('progress_ms', 'expected_elapsed'), [
+    (-1, '0.0'),
+    (999999, '10.0'),
+])
+def test_build_status_clamps_invalid_spotify_progress(progress_ms, expected_elapsed):
+    player = _player_with_playback({
+        'progress_ms': progress_ms,
+        'item': {'duration_ms': 10000, 'album': {}},
+    })
+
+    status = player._build_status()
+
+    assert status['elapsed'] == expected_elapsed
+    assert status['duration'] == '10.0'
+
+
+def test_build_status_advances_negative_spotify_progress_from_per_track_anchor():
+    playback = {
+        'progress_ms': -30000,
+        'item': {
+            'id': 'first-track',
+            'uri': 'spotify:track:first-track',
+            'duration_ms': 100000,
+            'album': {},
+        },
+    }
+    player = _player_with_playback(playback)
+
+    assert player._build_status()['elapsed'] == '0.0'
+
+    playback['progress_ms'] = -27000
+    assert player._build_status()['elapsed'] == '3.0'
+
+    playback['progress_ms'] = -50000
+    playback['item']['id'] = 'second-track'
+    playback['item']['uri'] = 'spotify:track:second-track'
+    assert player._build_status()['elapsed'] == '0.0'
+
+
+def test_build_status_reanchors_negative_progress_after_successful_seek():
+    playback = {
+        'progress_ms': -30000,
+        'item': {
+            'uri': 'spotify:track:test',
+            'duration_ms': 100000,
+            'album': {},
+        },
+    }
+    player = _player_with_playback(playback)
+    assert player._build_status()['elapsed'] == '0.0'
+
+    player._pending_seek_ms = 60000
+    playback['progress_ms'] = -29000
+    assert player._build_status()['elapsed'] == '60.0'
+
+    playback['progress_ms'] = -28000
+    assert player._build_status()['elapsed'] == '61.0'
+
+
+def test_build_status_persists_pause_override_while_spotify_reports_playing():
+    playback = {
+        'is_playing': True,
+        'progress_ms': -30000,
+        'item': {
+            'uri': 'spotify:track:test',
+            'duration_ms': 100000,
+            'album': {},
+        },
+    }
+    player = _player_with_playback(playback)
+    assert player._build_status()['elapsed'] == '0.0'
+    player._state_override = 'pause'
+    player._frozen_progress_ms = player._last_normalized_progress_ms
+
+    playback['progress_ms'] = -25000
+    paused = player._build_status()
+    assert paused['state'] == 'pause'
+    assert paused['elapsed'] == '0.0'
+
+    playback['progress_ms'] = -20000
+    still_paused = player._build_status()
+    assert still_paused['state'] == 'pause'
+    assert still_paused['elapsed'] == '0.0'
+
+
+def test_build_status_stops_at_duration_when_spotify_stays_playing():
+    playback = {
+        'is_playing': True,
+        'progress_ms': -30000,
+        'repeat_state': 'off',
+        'item': {
+            'uri': 'spotify:track:test',
+            'duration_ms': 1000,
+            'album': {},
+        },
+    }
+    player = _player_with_playback(playback)
+    assert player._build_status()['state'] == 'play'
+
+    playback['progress_ms'] = -29000
+    status = player._build_status()
+
+    assert status['elapsed'] == '1.0'
+    assert status['state'] == 'stop'
+    assert player._state_override == 'stop'
+
+    playback['progress_ms'] = -28000
+    stopped = player._build_status()
+    assert stopped['state'] == 'stop'
+    assert stopped['elapsed'] == '1.0'
+
+
+def test_build_status_clears_state_override_when_track_changes():
+    playback = {
+        'is_playing': True,
+        'progress_ms': -30000,
+        'item': {
+            'uri': 'spotify:track:first',
+            'duration_ms': 100000,
+            'album': {},
+        },
+    }
+    player = _player_with_playback(playback)
+    player._state_override = 'pause'
+    assert player._build_status()['state'] == 'pause'
+
+    playback['item']['uri'] = 'spotify:track:second'
+    playback['progress_ms'] = -50000
+
+    assert player._build_status()['state'] == 'play'
+    assert player._state_override is None
+    assert player._frozen_progress_ms is None
+
+
+def test_pause_uses_resolved_playback_device():
+    player = PlayerSpotify.__new__(PlayerSpotify)
+    player._lock = threading.RLock()
+    player._sp = Mock()
+    player._playback_device = Mock(return_value='resolved-device-id')
+    player._publish_status = Mock()
+
+    player.pause()
+
+    player._sp.pause_playback.assert_called_once_with(
+        device_id='resolved-device-id')
+    player._publish_status.assert_called_once_with(state_hint='pause')
+
+
+def test_seek_uses_resolved_playback_device_and_converts_seconds_to_milliseconds():
+    player = PlayerSpotify.__new__(PlayerSpotify)
+    player._lock = threading.RLock()
+    player._sp = Mock()
+    player._playback_device = Mock(return_value='resolved-device-id')
+    player._publish_status = Mock()
+
+    player.seek('60.125')
+
+    player._sp.seek_track.assert_called_once_with(
+        60125, device_id='resolved-device-id')
+    assert player._pending_seek_ms == 60125
+    player._publish_status.assert_called_once_with()
+
+
 def test_build_status_uses_first_valid_album_image():
     player = _player_with_playback({
         'item': {

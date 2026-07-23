@@ -1,7 +1,7 @@
 # Spotify Merge Status
 
 Date: 2026-07-23
-Branch: codex/spotify-merge-completion
+Branch: future3/develop
 
 ## Completed so far
 
@@ -15,40 +15,26 @@ Branch: codex/spotify-merge-completion
 - Added a hotfix to redact Spotify OAuth authorization codes from future RPC logs.
 - Added a hotfix for Spotify Web API `404 Device not found` responses when starting playback by first activating the visible Connect device.
 - Added the current follow-up hotfix to retry the activation transfer itself if Spotify lists the device before it accepts the first transfer.
+- Normalized Spotify's invalid negative progress timeline, including seek re-anchoring and frozen paused/stopped positions.
+- Made successful play/pause commands authoritative when Spotify Connect continues to publish stale playback state.
+- Added end-of-track detection so the web UI returns to the play icon at the track duration.
 
 ## Verification completed
 
-- Pi-side focused tests passed after the previous hotfix: 47 tests across Spotify/player/RPC log coverage.
-- Local focused test calls for the earlier hotfix passed, though the Windows pytest process has intermittently hung after completing output.
-- Direct Spotify diagnostic playback on the Pi succeeded after manually transferring playback to the `Phoniebox` device; track metadata and album art were present.
-- The daemon and `librespot` service were healthy after the previous deployment.
+- Pi-side focused Spotify/player/RPC coverage passed: 48 tests after the merge and 21 focused player tests after the live follow-up fixes.
+- Live RFID playback starts immediately with backend `spotify`, metadata, and album art.
+- Browser-visible seek verification published exactly `30.0` seconds after a routed seek.
+- Browser-visible state verification completed for play, pause, resume, and end-of-track stop.
+- Paused progress remained fixed at `2.746` seconds across a five-second interval.
+- Completed progress remained fixed at `188.186` seconds across a five-second interval.
+- The consumed OAuth request is absent from the historical daemon journal, and future request logging is redacted.
+- The jukebox daemon, `librespot`, MPD, and PulseAudio services remained active after deployment.
 
-## Current stuck point
+## Current state
 
-Live RFID-triggered Spotify playback on the Pi is still stuck on Spotify Connect device activation timing.
+The Spotify merge and live player-control follow-ups are complete on `future3/develop` and deployed to the Pi.
 
-Observed behavior:
-
-- The Spotify Web API lists the `Phoniebox` device.
-- The first `start_playback(device_id=...)` can fail with `404 Device not found`.
-- The previous code then tried `transfer_playback(device_id=...)`, but Spotify could return the same `404 Device not found` there too.
-- A later direct diagnostic transfer against the same device succeeded and playback worked.
-
-Current hypothesis:
-
-Spotify sometimes exposes the freshly woken or freshly authenticated Connect device through `devices()` before the account is ready to accept a transfer to it. The pending code retries `transfer_playback` once after a short settle delay and refreshes the device ID before retrying `start_playback`.
-
-## Remaining work
-
-- Run the new focused Spotify unit test for the transfer-retry path.
-- Deploy the new transfer-retry hotfix to the Pi.
-- Scrub the already-consumed OAuth callback code from old daemon logs on the Pi while the daemon is stopped. The application now redacts future calls, but one historical unredacted log line was still present after the earlier deployment.
-- Re-run live RFID playlist playback and confirm:
-  - backend is `spotify`
-  - state becomes `play`
-  - title/artist metadata is present
-  - album art is present
-  - pause routes through the unified player control and leaves playback paused
+The Pi currently uses the temporary silent PulseAudio sink created for visual verification. The Soundcore speaker can be re-paired and selected as the default sink when audible testing is needed again.
 
 ## Safety notes
 
