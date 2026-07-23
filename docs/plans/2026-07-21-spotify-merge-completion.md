@@ -1,5 +1,8 @@
 # Spotify Merge Completion Implementation Plan
 
+**Status:** Completed 2026-07-23. See `SPOTIFY_MERGE_STATUS.md` for verification
+results and the remaining audible Bluetooth check.
+
 **Goal:** Complete, test, deploy, and verify the Spotipy/librespot merge, including album art.
 
 **Architecture:** Preserve the Spotipy Web API backend and player arbiter. Extend the normalized status with a generic image URL, teach the web player to prefer backend-published art while retaining MPD cover caching, and deploy the entire tested revision coherently.

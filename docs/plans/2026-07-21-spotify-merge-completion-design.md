@@ -1,8 +1,14 @@
 # Spotify Merge Completion Design
 
+**Status:** Completed 2026-07-23. See `SPOTIFY_MERGE_STATUS.md` for deployment
+and verification results.
+
 ## Scope
 
-Complete `SPOTIFY_MERGE_TODO.md`, including the optional Spotify album-art enhancement. Preserve existing local scratch files and secrets, verify the merged Spotipy backend and player arbiter, build the webapp locally, then deploy and verify the coherent revision on the Raspberry Pi at `192.168.50.8`.
+Complete the Spotipy/librespot integration, including Spotify album art.
+Preserve local secrets, verify the merged Spotipy backend and player arbiter,
+build the webapp locally, then deploy and verify the coherent revision on the
+Raspberry Pi.
 
 ## Architecture
 

@@ -24,7 +24,18 @@ as the secondary output.
 Requirements: **Spotify Premium** account, a Bluetooth speaker, and a working
 Jukebox installation.
 
-## Step 1: Run the Spotify setup script
+## Step 1: Configure a Spotify Developer App
+
+In the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard),
+add this redirect URI, replacing `<pi-ip>` with the Jukebox address:
+
+```text
+http://<pi-ip>:8888/callback
+```
+
+Keep any existing redirect URIs and save the application.
+
+## Step 2: Run the Spotify setup script
 
 ```bash
 cd ~/RPi-Jukebox-RFID
@@ -32,13 +43,22 @@ bash src/jukebox/components/playerspotify/setup.inc.sh
 ```
 
 This installs the Python dependency, enables the `playerspotify` module in
-`jukebox.yaml`, and sets up librespot (step 3) in one go.
+`jukebox.yaml`, and sets up librespot in one go. Set `SKIP_LIBRESPOT=1` if
+the Jukebox should only control Spotify playback on other devices.
 
-Then create a Spotify Developer App and connect your account via the web UI
-(**Settings → Spotify**) as described in
-[the Spotify setup checklist](../../spotify-pi-setup.md).
+## Step 3: Connect Spotify in the web UI
 
-## Step 2: Pair the Bluetooth speaker
+1. Open **Settings -> Spotify** in the Jukebox web UI.
+2. Enter the client ID and client secret from the developer application.
+3. Set the redirect URI to `http://<pi-ip>:8888/callback` and save.
+4. Select **Connect with Spotify** and approve access in the browser.
+5. Confirm that the Spotify settings show the connected account.
+
+The Jukebox targets the librespot device by `playerspotify.device_name`.
+Selecting an explicit device under **Settings -> Spotify -> Device** overrides
+that name lookup.
+
+## Step 4: Pair the Bluetooth speaker
 
 Pair, trust, and connect the speaker as described in
 [Audio → Bluetooth](audio.md#bluetooth):
@@ -57,9 +77,9 @@ default `toggle_on_connect: true`, the Jukebox switches to the speaker
 automatically whenever it connects; you can also switch manually via the web
 UI or bind `volume.ctrl.toggle_output` to a card.
 
-## Step 3: librespot (makes the Pi a Spotify device)
+## Step 5: librespot (makes the Pi a Spotify device)
 
-Already done if you ran the setup script in step 1. To run it separately:
+Already done if you ran the setup script in step 2. To run it separately:
 
 ```bash
 bash src/jukebox/components/playerspotify/setup_librespot.inc.sh
@@ -85,7 +105,7 @@ playerspotify:
 ```
 
 **Account activation happens automatically** — no phone needed: as soon as
-the Jukebox is connected to Spotify (step 1), it logs the librespot device
+the Jukebox is connected to Spotify (step 3), it logs the librespot device
 into your account with its own OAuth token and librespot keeps reusable
 credentials from then on. If you connected Spotify *before* installing
 librespot, just restart the jukebox service once.
@@ -97,7 +117,7 @@ librespot, just restart the jukebox service once.
 > still works: select **Phoniebox** in the device picker of any Spotify app
 > (phone or desktop) on the same network.
 
-## Step 4: Map a card
+## Step 6: Map a card
 
 Add a card to `shared/settings/cards.yaml`:
 
@@ -118,7 +138,7 @@ you do not need to select a device ID in the web UI. An explicit choice under
 **Settings → Spotify → Device** takes precedence if you ever want to play on
 a different device (leave it on *Active device* for the Pi/Bluetooth setup).
 
-## Step 5: Tap the card
+## Step 7: Test the card
 
 Tap the card: the song starts on the Pi and comes out of whichever output is
 active — the Bluetooth speaker when it is connected, otherwise the primary
@@ -129,9 +149,12 @@ output. A second tap of the same card toggles pause/play (configurable via
 
 | Symptom | Fix |
 |---|---|
+| "redirect_uri: Not matching configuration" | The URI in the Spotify dashboard must exactly match the URI configured in the Jukebox |
 | Card starts playback on your phone instead of the Pi | librespot is not running or its name doesn't match `device_name`. Check `systemctl --user status librespot.service` |
 | "No Connect device named 'Phoniebox' found" in the logs | Restart the jukebox service so the automatic librespot login runs again; check the log for `librespot auto-login` messages. Fallback: select the device once in any Spotify app |
 | Log says the token lacks the 'streaming' permission | Disconnect and re-connect Spotify in the web UI (Settings → Spotify), then restart the jukebox |
 | Audio comes from the Pi's jack instead of the Bluetooth speaker | Speaker not connected, or not configured as secondary output — re-run the audio config tool and check `pactl list sinks short` shows a `bluez_sink...` |
 | Sound stops when you log out of SSH | Run `sudo loginctl enable-linger $(whoami)` (the setup script does this) |
 | Playback fails right after a reboot | librespot may take a few seconds to register with Spotify; also make sure the Bluetooth speaker is switched on so it can auto-connect |
+| Plugin does not load | Check that `playerspotify` is under `modules.named` in `jukebox.yaml` and that spotipy is installed |
+| Token expired | Use **Settings -> Spotify -> Disconnect**, then connect again |

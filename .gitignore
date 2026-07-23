@@ -31,3 +31,7 @@ __pycache__/
 # Development Scratchpads
 /**/scratch
 /**/scratch_*
+
+# Local Spotify credentials and OAuth caches
+/.env
+/.spotify_token*

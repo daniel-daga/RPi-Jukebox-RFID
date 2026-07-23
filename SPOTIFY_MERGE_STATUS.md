@@ -5,7 +5,8 @@ Branch: future3/develop
 
 ## Completed so far
 
-- Implemented Spotify playback integration from `SPOTIFY_MERGE_TODO.md`.
+- Implemented Spotify playback integration described in
+  `docs/plans/2026-07-21-spotify-merge-completion.md`.
 - Added Spotify album art to backend player status and web UI display paths.
 - Added player arbiter ownership so transport commands route to the active backend.
 - Added tests for Spotify status ownership, album art propagation, RPC log redaction, and Windows-compatible test behavior.
