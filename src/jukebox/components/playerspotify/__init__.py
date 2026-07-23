@@ -599,7 +599,17 @@ class PlayerSpotify:
             # account transfers playback to it once. Activate it, allow the
             # Connect session to settle, then repeat the original request.
             logger.info("Spotify: activating Connect device before retrying playback")
-            self._sp.transfer_playback(device_id=device, force_play=False)
+            try:
+                self._sp.transfer_playback(device_id=device, force_play=False)
+            except Exception as transfer_error:
+                if not self._is_device_not_found(transfer_error):
+                    raise
+                # Spotify can expose a newly logged-in Connect device just
+                # before it accepts a transfer. Refresh once after a short
+                # settle period and repeat the activation request.
+                time.sleep(2)
+                device = self._playback_device(refresh=True) or device
+                self._sp.transfer_playback(device_id=device, force_play=False)
             time.sleep(2)
             self._sp.start_playback(device_id=device, **kwargs)
 

@@ -262,3 +262,23 @@ def test_start_playback_does_not_transfer_for_other_errors():
         player._start_playback(context_uri='spotify:playlist:test')
 
     player._sp.transfer_playback.assert_not_called()
+
+
+def test_start_playback_retries_device_transfer_after_device_not_found():
+    player = _player_for_start_playback(
+        ['device-id', 'device-id', 'refreshed-id'])
+    player._sp.start_playback.side_effect = [_device_error(404), None]
+    player._sp.transfer_playback.side_effect = [_device_error(404), None]
+
+    with patch.object(player_module.time, 'sleep') as sleep:
+        player._start_playback(context_uri='spotify:playlist:test')
+
+    assert player._sp.transfer_playback.call_args_list == [
+        call(device_id='device-id', force_play=False),
+        call(device_id='refreshed-id', force_play=False),
+    ]
+    assert sleep.call_args_list == [call(2), call(2)]
+    assert player._sp.start_playback.call_args_list == [
+        call(device_id='device-id', context_uri='spotify:playlist:test'),
+        call(device_id='refreshed-id', context_uri='spotify:playlist:test'),
+    ]
