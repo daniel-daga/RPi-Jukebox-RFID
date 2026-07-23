@@ -14,7 +14,7 @@ import request from '../../utils/request';
 
 const Player = () => {
   const { state: { playerstatus } } = useContext(PlayerContext);
-  const { file } = playerstatus || {};
+  const { albumart, file, player } = playerstatus || {};
 
   const [coverImage, setCoverImage] = useState(undefined);
   const [backgroundImage, setBackgroundImage] = useState('none');
@@ -26,21 +26,49 @@ const Player = () => {
   const { show_covers } = settings;
 
   useEffect(() => {
+    let cancelled = false;
+
+    const clearCoverArt = () => {
+      setCoverImage(undefined);
+      setBackgroundImage('none');
+    };
+
+    const setCoverArt = (image) => {
+      setCoverImage(image);
+      setBackgroundImage([
+        'linear-gradient(to bottom, rgba(18, 18, 18, 0.5), rgba(18, 18, 18, 1))',
+        `url(${image})`
+      ].join(','));
+    };
+
     const getCoverArt = async () => {
-      const { result } = await request('getSingleCoverArt', { song_url: file });
-      if (result) {
-        setCoverImage(`/cover-cache/${result}`);
-        setBackgroundImage([
-          'linear-gradient(to bottom, rgba(18, 18, 18, 0.5), rgba(18, 18, 18, 1))',
-          `url(/cover-cache/${result})`
-        ].join(','));
-      };
+      const response = await request('getSingleCoverArt', { song_url: file });
+      if (cancelled) {
+        return;
+      }
+
+      if (response?.result) {
+        setCoverArt(`/cover-cache/${response.result}`);
+      } else {
+        clearCoverArt();
+      }
+    };
+
+    if (!show_covers) {
+      clearCoverArt();
+    } else if (albumart) {
+      setCoverArt(albumart);
+    } else if (player === 'mpd' && file) {
+      clearCoverArt();
+      getCoverArt();
+    } else {
+      clearCoverArt();
     }
 
-    if (file && show_covers) {
-      getCoverArt();
-    }
-  }, [file]);
+    return () => {
+      cancelled = true;
+    };
+  }, [albumart, file, player, show_covers]);
 
   return (
     <Grid

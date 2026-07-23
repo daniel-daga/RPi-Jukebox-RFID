@@ -36,8 +36,9 @@ class FakeProc:
 
 def test_credentials_path_expands_home(tmp_path, monkeypatch):
     monkeypatch.setenv('HOME', str(tmp_path))
+    monkeypatch.setenv('USERPROFILE', str(tmp_path))
     path = librespot_seeder.credentials_path('~/.cache/librespot')
-    assert path == str(tmp_path / '.cache' / 'librespot' / 'credentials.json')
+    assert pathlib.Path(path) == tmp_path / '.cache' / 'librespot' / 'credentials.json'
 
 
 def test_has_cached_credentials(tmp_path):

@@ -51,6 +51,7 @@ import json
 import logging
 import jukebox.cfghandler
 import jukebox.plugs as plugs
+from jukebox.rpc.logging_utils import redact_request
 
 logger = logging.getLogger('jb.rpc.server')
 cfg = jukebox.cfghandler.get_handler('jukebox')
@@ -108,7 +109,7 @@ class RpcServer:
 
             client_request = json.loads(message)
 
-            logger.debug(f"Request: {client_request}")
+            logger.debug(f"Request: {redact_request(client_request)}")
             error = None
             result = None
 

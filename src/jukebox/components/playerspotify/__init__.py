@@ -22,6 +22,7 @@ Card configuration example (cards.yaml):
 
 import logging
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -343,7 +344,7 @@ class PlayerSpotify:
 
         :return: status dict, or None on a transient Web API error
         """
-        status = {'player': 'spotify', 'state': 'stop'}
+        status = {'player': 'spotify', 'state': 'stop', 'albumart': ''}
         if self._sp is None:
             return status
         try:
@@ -355,6 +356,14 @@ class PlayerSpotify:
         if not current:
             return status
         item = current.get('item') or {}
+        album = item.get('album') or {}
+        images = album.get('images')
+        if isinstance(images, list):
+            status['albumart'] = next(
+                (image['url'] for image in images
+                 if isinstance(image, dict) and image.get('url')),
+                '',
+            )
         repeat_state = current.get('repeat_state', 'off')
         status.update({
             'state': 'play' if current.get('is_playing') else 'pause',
@@ -363,7 +372,7 @@ class PlayerSpotify:
             'file': item.get('uri', ''),
             'title': item.get('name', ''),
             'artist': ', '.join(a['name'] for a in item.get('artists', [])),
-            'album': (item.get('album') or {}).get('name', ''),
+            'album': album.get('name', ''),
             'elapsed': str((current.get('progress_ms') or 0) / 1000),
             'duration': str((item.get('duration_ms') or 0) / 1000),
             'random': '1' if current.get('shuffle_state') else '0',
@@ -577,11 +586,46 @@ class PlayerSpotify:
         device = self._playback_device()
         try:
             self._sp.start_playback(device_id=device, **kwargs)
-        except Exception:
+        except Exception as error:
             refreshed = self._playback_device(refresh=True)
-            if refreshed == device:
+            if refreshed != device:
+                self._sp.start_playback(device_id=refreshed, **kwargs)
+                return
+            if device is None or not self._is_device_not_found(error):
                 raise
-            self._sp.start_playback(device_id=refreshed, **kwargs)
+
+            # A freshly seeded librespot instance can be listed by Spotify but
+            # still reject start_playback with "Device not found" until the
+            # account transfers playback to it once. Activate it, allow the
+            # Connect session to settle, then repeat the original request.
+            logger.info("Spotify: activating Connect device before retrying playback")
+            try:
+                self._sp.transfer_playback(device_id=device, force_play=False)
+            except Exception as transfer_error:
+                if not self._is_device_not_found(transfer_error):
+                    raise
+                # Spotify can expose a newly logged-in Connect device just
+                # before it accepts a transfer. Refresh once after a short
+                # settle period and repeat the activation request.
+                time.sleep(2)
+                device = self._playback_device(refresh=True) or device
+                self._sp.transfer_playback(device_id=device, force_play=False)
+            time.sleep(2)
+            self._sp.start_playback(device_id=device, **kwargs)
+
+    @staticmethod
+    def _is_device_not_found(error) -> bool:
+        """Return whether Spotify rejected an otherwise visible device."""
+        if getattr(error, 'http_status', None) != 404:
+            return False
+        details = ' '.join(
+            str(value) for value in (
+                getattr(error, 'reason', ''),
+                getattr(error, 'msg', ''),
+                error,
+            )
+        )
+        return 'device not found' in details.lower()
 
     @plugs.tag
     def play(self):
