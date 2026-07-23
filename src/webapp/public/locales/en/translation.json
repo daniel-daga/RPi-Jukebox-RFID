@@ -89,10 +89,29 @@
           "description": "Choose the amount of minutes you want the action to be performed."
         },
         "spotify": {
-          "uri-label": "Spotify URI",
-          "uri-hint": "Right-click any track, album or playlist in Spotify → Share → Copy URI",
+          "source-label": "Spotify link or URI",
+          "source-hint": "Paste a Spotify share link or URI for a track, album, or playlist.",
+          "source-type": "Type: {{type}}",
+          "loading": "Loading Spotify source…",
+          "resolved": "Spotify source loaded.",
+          "invalid": "Enter a valid Spotify track, album, or playlist link or URI.",
+          "authentication-unavailable": "Spotify authentication is unavailable. Check the Spotify configuration.",
+          "authentication-disconnected": "Spotify is not connected. Connect Spotify and try again.",
+          "not-found": "This Spotify source could not be found.",
+          "transient-unavailable": "Spotify is temporarily unavailable. Please try again.",
+          "retry": "Retry",
+          "open-in-spotify": "Open in Spotify",
+          "test-playback": "Test playback",
+          "playback-testing": "Testing playback…",
+          "playback-success": "Playback started successfully.",
+          "playback-error": "Playback could not be started.",
+          "preview-label": "Spotify source preview",
+          "preview-image-alt": "Cover artwork for {{name}}",
+          "preview-image-unavailable": "No cover artwork available for {{name}}",
+          "uri-label": "Spotify link or URI",
+          "uri-hint": "Paste a Spotify share link or URI for a track, album, or playlist.",
           "uri-type": "Type: {{type}}",
-          "uri-invalid": "Not a valid Spotify URI (should start with spotify:track:, spotify:album: or spotify:playlist:)"
+          "uri-invalid": "Enter a valid Spotify track, album, or playlist link or URI."
         },
         "synchronisation": {
           "rfidcards": {

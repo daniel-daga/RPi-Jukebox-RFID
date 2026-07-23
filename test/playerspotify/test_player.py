@@ -81,6 +81,7 @@ def _load_player_module():
 
 player_module = _load_player_module()
 PlayerSpotify = player_module.PlayerSpotify
+parse_spotify_source = player_module.parse_spotify_source
 
 
 def _player_with_playback(playback):
@@ -445,3 +446,282 @@ def test_start_playback_retries_device_transfer_after_device_not_found():
         call(device_id='device-id', context_uri='spotify:playlist:test'),
         call(device_id='refreshed-id', context_uri='spotify:playlist:test'),
     ]
+
+
+TRACK_ID = '11dFghVXANMlKmJXsNCbNl'
+ALBUM_ID = '4aawyAB9vmqN3uQ7FjRGTy'
+PLAYLIST_ID = '37i9dQZF1DXcBWIGoYBM5M'
+
+
+@pytest.mark.parametrize(('value', 'source_type', 'source_id'), [
+    (f'spotify:track:{TRACK_ID}', 'track', TRACK_ID),
+    (f'spotify:album:{ALBUM_ID}', 'album', ALBUM_ID),
+    (f'spotify:playlist:{PLAYLIST_ID}', 'playlist', PLAYLIST_ID),
+    (f'https://open.spotify.com/track/{TRACK_ID}', 'track', TRACK_ID),
+    (f'https://open.spotify.com/album/{ALBUM_ID}', 'album', ALBUM_ID),
+    (f'https://open.spotify.com/playlist/{PLAYLIST_ID}', 'playlist', PLAYLIST_ID),
+    (f'https://open.spotify.com/intl-de/track/{TRACK_ID}', 'track', TRACK_ID),
+])
+def test_parse_spotify_source_accepts_supported_uris_and_share_urls(
+        value, source_type, source_id):
+    assert parse_spotify_source(value) == {
+        'uri': f'spotify:{source_type}:{source_id}',
+        'external_url': f'https://open.spotify.com/{source_type}/{source_id}',
+        'type': source_type,
+        'id': source_id,
+    }
+
+
+def test_parse_spotify_source_strips_whitespace_query_and_fragment():
+    assert parse_spotify_source(
+        f'  https://open.spotify.com/track/{TRACK_ID}'
+        '?si=share-token&utm_source=copy-link#ignored  '
+    ) == {
+        'uri': f'spotify:track:{TRACK_ID}',
+        'external_url': f'https://open.spotify.com/track/{TRACK_ID}',
+        'type': 'track',
+        'id': TRACK_ID,
+    }
+
+
+@pytest.mark.parametrize('value', [
+    None,
+    123,
+    '',
+    '   ',
+    'not Spotify',
+    'spotify:track',
+    'spotify:track:',
+    f'spotify:track:{TRACK_ID}:extra',
+    f'spotify:artist:{TRACK_ID}',
+    f'spotify:episode:{TRACK_ID}',
+    f'https://example.com/track/{TRACK_ID}',
+    f'http://open.spotify.com/track/{TRACK_ID}',
+    f'https://user:password@open.spotify.com/track/{TRACK_ID}',
+    f'https://open.spotify.com:443/track/{TRACK_ID}',
+    f'https://open.spotify.com/artist/{TRACK_ID}',
+    f'https://open.spotify.com/episode/{TRACK_ID}',
+    f'https://open.spotify.com/track/{TRACK_ID}/extra',
+])
+def test_parse_spotify_source_rejects_malformed_and_unsupported_values(value):
+    with pytest.raises(ValueError):
+        parse_spotify_source(value)
+
+
+def _player_for_source_resolution():
+    player = PlayerSpotify.__new__(PlayerSpotify)
+    player._sp = Mock()
+    player._auth_manager = Mock()
+    player._is_authenticated = Mock(return_value=True)
+    return player
+
+
+@pytest.mark.parametrize(('source_type', 'source_id', 'value', 'metadata',
+                          'expected_name', 'expected_subtitle', 'expected_image'), [
+    (
+        'track',
+        TRACK_ID,
+        f'spotify:track:{TRACK_ID}',
+        {
+            'name': 'The Track',
+            'artists': [{'name': 'First Artist'}, {'name': 'Second Artist'}],
+            'album': {'images': [{'url': 'https://i.scdn.co/track-cover'}]},
+        },
+        'The Track',
+        'First Artist, Second Artist',
+        'https://i.scdn.co/track-cover',
+    ),
+    (
+        'album',
+        ALBUM_ID,
+        f'https://open.spotify.com/album/{ALBUM_ID}?si=ignored',
+        {
+            'name': 'The Album',
+            'artists': [{'name': 'Album Artist'}],
+            'images': [{'url': 'https://i.scdn.co/album-cover'}],
+        },
+        'The Album',
+        'Album Artist',
+        'https://i.scdn.co/album-cover',
+    ),
+    (
+        'playlist',
+        PLAYLIST_ID,
+        f'https://open.spotify.com/playlist/{PLAYLIST_ID}',
+        {
+            'name': 'The Playlist',
+            'owner': {'display_name': 'Playlist Owner', 'id': 'owner-id'},
+            'images': [{'url': 'https://i.scdn.co/playlist-cover'}],
+        },
+        'The Playlist',
+        'Playlist Owner',
+        'https://i.scdn.co/playlist-cover',
+    ),
+])
+def test_resolve_source_normalizes_supported_spotify_metadata(
+        source_type, source_id, value, metadata, expected_name,
+        expected_subtitle, expected_image):
+    player = _player_for_source_resolution()
+    getattr(player._sp, source_type).return_value = metadata
+
+    result = player.resolve_source(value)
+
+    assert result == {
+        'uri': f'spotify:{source_type}:{source_id}',
+        'external_url': f'https://open.spotify.com/{source_type}/{source_id}',
+        'type': source_type,
+        'name': expected_name,
+        'subtitle': expected_subtitle,
+        'image_url': expected_image,
+    }
+    getattr(player._sp, source_type).assert_called_once_with(source_id)
+
+
+@pytest.mark.parametrize(('source_type', 'source_id'), [
+    ('track', TRACK_ID),
+    ('album', ALBUM_ID),
+    ('playlist', PLAYLIST_ID),
+])
+def test_resolve_source_uri_and_share_url_have_same_canonical_identity(
+        source_type, source_id):
+    player = _player_for_source_resolution()
+    getattr(player._sp, source_type).return_value = {}
+
+    uri_result = player.resolve_source(f'spotify:{source_type}:{source_id}')
+    url_result = player.resolve_source(
+        f'https://open.spotify.com/{source_type}/{source_id}?si=ignored')
+
+    assert uri_result['uri'] == url_result['uri']
+    assert uri_result['external_url'] == url_result['external_url']
+
+
+@pytest.mark.parametrize('value', [
+    'not Spotify',
+    f'spotify:artist:{TRACK_ID}',
+    f'https://open.spotify.com/show/{ALBUM_ID}',
+])
+def test_resolve_source_returns_invalid_source_without_calling_spotify(value):
+    player = _player_for_source_resolution()
+
+    assert player.resolve_source(value) == {'error': 'invalid_source'}
+    player._sp.track.assert_not_called()
+    player._sp.album.assert_not_called()
+    player._sp.playlist.assert_not_called()
+
+
+def test_resolve_source_returns_authentication_unavailable_without_client():
+    player = PlayerSpotify.__new__(PlayerSpotify)
+    player._sp = None
+    player._auth_manager = None
+
+    assert player.resolve_source(
+        f'spotify:track:{TRACK_ID}'
+    ) == {'error': 'authentication_unavailable'}
+
+
+def test_resolve_source_returns_authentication_unavailable_without_token():
+    player = _player_for_source_resolution()
+    player._is_authenticated.return_value = False
+
+    assert player.resolve_source(
+        f'spotify:track:{TRACK_ID}'
+    ) == {'error': 'authentication_unavailable'}
+    player._sp.track.assert_not_called()
+
+
+@pytest.mark.parametrize('status', [401, 403])
+def test_resolve_source_maps_spotify_auth_rejection_to_authentication_unavailable(
+        status):
+    player = _player_for_source_resolution()
+    player._sp.track.side_effect = _spotify_api_error(
+        status, 'token rejected; access_token=do-not-leak')
+
+    assert player.resolve_source(
+        f'spotify:track:{TRACK_ID}'
+    ) == {'error': 'authentication_unavailable'}
+
+
+def test_resolve_source_maps_oauth_refresh_failure_to_authentication_unavailable():
+    class SpotifyOauthError(RuntimeError):
+        pass
+
+    player = _player_for_source_resolution()
+    player._sp.track.side_effect = SpotifyOauthError(
+        'refresh failed; refresh_token=do-not-leak')
+
+    with patch.object(player_module.logger, 'warning') as warning:
+        result = player.resolve_source(f'spotify:track:{TRACK_ID}')
+
+    assert result == {'error': 'authentication_unavailable'}
+    assert 'do-not-leak' not in repr(result)
+    assert 'do-not-leak' not in repr(warning.call_args)
+
+
+@pytest.mark.parametrize(('source_type', 'source_id', 'metadata'), [
+    ('track', TRACK_ID, {'album': {}}),
+    ('album', ALBUM_ID, {}),
+    ('playlist', PLAYLIST_ID, {'owner': {}}),
+])
+def test_resolve_source_tolerates_missing_metadata_and_artwork(
+        source_type, source_id, metadata):
+    player = _player_for_source_resolution()
+    getattr(player._sp, source_type).return_value = metadata
+
+    result = player.resolve_source(f'spotify:{source_type}:{source_id}')
+
+    assert result['name'] == ''
+    assert result['subtitle'] == ''
+    assert result['image_url'] == ''
+
+
+def test_resolve_source_uses_first_valid_image_and_playlist_owner_id_fallback():
+    player = _player_for_source_resolution()
+    player._sp.playlist.return_value = {
+        'name': 'Playlist',
+        'owner': {'display_name': '', 'id': 'owner-id'},
+        'images': [None, {}, {'url': ''}, {'url': 'https://i.scdn.co/valid'}],
+    }
+
+    result = player.resolve_source(f'spotify:playlist:{PLAYLIST_ID}')
+
+    assert result['subtitle'] == 'owner-id'
+    assert result['image_url'] == 'https://i.scdn.co/valid'
+
+
+def _spotify_api_error(status, message):
+    error = RuntimeError(message)
+    error.http_status = status
+    return error
+
+
+@pytest.mark.parametrize('failure', [
+    None,
+    _spotify_api_error(404, 'missing item'),
+])
+def test_resolve_source_returns_not_found_for_missing_spotify_content(failure):
+    player = _player_for_source_resolution()
+    if failure is None:
+        player._sp.track.return_value = None
+    else:
+        player._sp.track.side_effect = failure
+
+    assert player.resolve_source(
+        f'spotify:track:{TRACK_ID}'
+    ) == {'error': 'not_found'}
+
+
+@pytest.mark.parametrize('failure', [
+    _spotify_api_error(429, 'rate limited; access_token=do-not-leak'),
+    _spotify_api_error(500, 'Spotify failed; client_secret=do-not-leak'),
+    RuntimeError('timeout containing bearer do-not-leak'),
+])
+def test_resolve_source_returns_safe_error_for_transient_spotify_failure(failure):
+    player = _player_for_source_resolution()
+    player._sp.track.side_effect = failure
+
+    with patch.object(player_module.logger, 'warning') as warning:
+        result = player.resolve_source(f'spotify:track:{TRACK_ID}')
+
+    assert result == {'error': 'spotify_unavailable'}
+    assert 'do-not-leak' not in repr(result)
+    assert 'do-not-leak' not in repr(warning.call_args)

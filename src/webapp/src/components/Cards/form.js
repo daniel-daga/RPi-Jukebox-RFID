@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -32,6 +32,8 @@ const CardsForm = ({
   setActionData,
 }) => {
   const { t } = useTranslation();
+  const [spotifySourceValid, setSpotifySourceValid] = useState(false);
+  const saveDisabled = actionData.action === 'spotify' && !spotifySourceValid;
 
   return (
     <>
@@ -59,11 +61,13 @@ const CardsForm = ({
                       actionData={actionData}
                       setActionData={setActionData}
                       cardId={cardId}
+                      onSpotifyValidationChange={setSpotifySourceValid}
                     />
                   </Grid>
                   <ActionsControls
                     actionData={actionData}
                     cardId={cardId}
+                    saveDisabled={saveDisabled}
                   />
                 </>
               }

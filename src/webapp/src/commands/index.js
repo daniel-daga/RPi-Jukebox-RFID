@@ -300,6 +300,12 @@ const commands = {
     method: 'play_card',
     argKeys: ['uri'],
   },
+  resolveSpotifySource: {
+    _package: 'spotify',
+    plugin: 'ctrl',
+    method: 'resolve_source',
+    argKeys: ['value'],
+  },
 
   // Spotify — settings RPC methods
   getSpotifyConfig: {

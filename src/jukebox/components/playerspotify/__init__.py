@@ -21,6 +21,7 @@ Card configuration example (cards.yaml):
 """
 
 import logging
+import re
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -40,6 +41,80 @@ logger = logging.getLogger('jb.PlayerSpotify')
 cfg = jukebox.cfghandler.get_handler('jukebox')
 
 SECOND_SWIPE_ACTIONS = ['toggle', 'play', 'skip', 'rewind', 'none']
+SUPPORTED_SOURCE_TYPES = ('track', 'album', 'playlist')
+_SPOTIFY_ID_RE = re.compile(r'^[A-Za-z0-9]{22}$')
+
+
+def parse_spotify_source(value):
+    """Parse a supported Spotify URI or share URL without accessing Spotify.
+
+    Returns the canonical URI, canonical public URL, source type, and Spotify
+    object ID. Query parameters and fragments on share URLs are intentionally
+    omitted from the normalized result.
+
+    :raises ValueError: if *value* is malformed or has an unsupported type.
+    """
+    if not isinstance(value, str):
+        raise ValueError('Spotify source must be a string')
+    value = value.strip()
+    if not value:
+        raise ValueError('Spotify source must not be empty')
+
+    if value.startswith('spotify:'):
+        parts = value.split(':')
+        if len(parts) != 3:
+            raise ValueError('Malformed Spotify URI')
+        source_type, source_id = parts[1:]
+    else:
+        parsed = urlparse(value)
+        if (parsed.scheme.lower() != 'https'
+                or parsed.hostname is None
+                or parsed.hostname.lower() != 'open.spotify.com'
+                or parsed.username is not None
+                or parsed.password is not None
+                or parsed.port is not None):
+            raise ValueError('Malformed Spotify share URL')
+        path_parts = [part for part in parsed.path.split('/') if part]
+        if len(path_parts) == 3 and path_parts[0].lower().startswith('intl-'):
+            path_parts = path_parts[1:]
+        if len(path_parts) != 2:
+            raise ValueError('Malformed Spotify share URL')
+        source_type, source_id = path_parts
+
+    source_type = source_type.lower()
+    if source_type not in SUPPORTED_SOURCE_TYPES:
+        raise ValueError('Unsupported Spotify source type')
+    if not _SPOTIFY_ID_RE.fullmatch(source_id):
+        raise ValueError('Malformed Spotify source ID')
+
+    return {
+        'uri': f'spotify:{source_type}:{source_id}',
+        'external_url': f'https://open.spotify.com/{source_type}/{source_id}',
+        'type': source_type,
+        'id': source_id,
+    }
+
+
+def _first_image_url(images):
+    """Return the first usable image URL from a Spotify object."""
+    if not isinstance(images, list):
+        return ''
+    return next(
+        (image['url'] for image in images
+         if isinstance(image, dict) and image.get('url')),
+        '',
+    )
+
+
+def _artist_subtitle(item):
+    """Return a display-ready list of artist names from a Spotify object."""
+    artists = item.get('artists')
+    if not isinstance(artists, list):
+        return ''
+    return ', '.join(
+        artist['name'] for artist in artists
+        if isinstance(artist, dict) and artist.get('name')
+    )
 
 
 class _OAuthCallbackHandler(BaseHTTPRequestHandler):
@@ -535,6 +610,72 @@ class PlayerSpotify:
         if not self._is_authenticated() and self._oauth_server is None:
             self._start_auth_server()
         return self._auth_manager.get_authorize_url()
+
+    @plugs.tag
+    def resolve_source(self, value: str) -> dict:
+        """Resolve a Spotify URI or share URL to card-oriented metadata.
+
+        Failures use stable error codes and deliberately exclude exception
+        messages or authentication details from both RPC results and logs.
+        """
+        try:
+            source = parse_spotify_source(value)
+        except (TypeError, ValueError):
+            return {'error': 'invalid_source'}
+
+        if self._sp is None:
+            return {'error': 'authentication_unavailable'}
+        if (getattr(self, '_auth_manager', None) is not None
+                and not self._is_authenticated()):
+            return {'error': 'authentication_unavailable'}
+
+        try:
+            spotify_item = getattr(self._sp, source['type'])(source['id'])
+        except Exception as error:
+            status = getattr(error, 'http_status', None)
+            if (status in (401, 403)
+                    or error.__class__.__name__ in (
+                        'SpotifyOauthError',
+                        'SpotifyStateError',
+                        'SpotifyImplicitGrantError',
+                    )):
+                error_code = 'authentication_unavailable'
+            elif status == 404:
+                error_code = 'not_found'
+            else:
+                error_code = 'spotify_unavailable'
+            logger.warning(
+                "Spotify source resolution failed (%s, HTTP status %s)",
+                error.__class__.__name__,
+                status if isinstance(status, int) else 'unknown',
+            )
+            return {'error': error_code}
+
+        if not isinstance(spotify_item, dict):
+            return {'error': 'not_found'}
+
+        if source['type'] == 'track':
+            subtitle = _artist_subtitle(spotify_item)
+            album = spotify_item.get('album')
+            images = album.get('images') if isinstance(album, dict) else None
+        elif source['type'] == 'album':
+            subtitle = _artist_subtitle(spotify_item)
+            images = spotify_item.get('images')
+        else:
+            owner = spotify_item.get('owner')
+            subtitle = ''
+            if isinstance(owner, dict):
+                subtitle = owner.get('display_name') or owner.get('id') or ''
+            images = spotify_item.get('images')
+
+        return {
+            'uri': source['uri'],
+            'external_url': source['external_url'],
+            'type': source['type'],
+            'name': spotify_item.get('name') or '',
+            'subtitle': subtitle,
+            'image_url': _first_image_url(images),
+        }
 
     @plugs.tag
     def submit_auth_code(self, code_or_url: str) -> dict:

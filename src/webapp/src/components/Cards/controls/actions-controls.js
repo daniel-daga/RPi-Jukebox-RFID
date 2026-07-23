@@ -17,6 +17,7 @@ import {
 const ActionsControls = ({
   actionData,
   cardId,
+  saveDisabled = false,
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -73,6 +74,7 @@ const ActionsControls = ({
         }
         <Button
           color="primary"
+          disabled={saveDisabled}
           onClick={() => handleRegisterCard(cardId)}
           size="small"
         >

@@ -89,10 +89,29 @@
           "description": "Wähle die Anzahl der Minuten nachdem die Aktion ausgeführt werden soll."
         },
         "spotify": {
-          "uri-label": "Spotify URI",
-          "uri-hint": "Rechtsklick auf Titel, Album oder Playlist in Spotify → Freigeben → URI kopieren",
+          "source-label": "Spotify-Link oder -URI",
+          "source-hint": "Füge einen Spotify-Link oder eine Spotify-URI für einen Titel, ein Album oder eine Playlist ein.",
+          "source-type": "Typ: {{type}}",
+          "loading": "Spotify-Quelle wird geladen…",
+          "resolved": "Spotify-Quelle wurde geladen.",
+          "invalid": "Gib einen gültigen Spotify-Link oder eine gültige Spotify-URI für einen Titel, ein Album oder eine Playlist ein.",
+          "authentication-unavailable": "Die Spotify-Authentifizierung ist nicht verfügbar. Überprüfe die Spotify-Konfiguration.",
+          "authentication-disconnected": "Spotify ist nicht verbunden. Verbinde Spotify und versuche es erneut.",
+          "not-found": "Diese Spotify-Quelle wurde nicht gefunden.",
+          "transient-unavailable": "Spotify ist vorübergehend nicht verfügbar. Bitte versuche es erneut.",
+          "retry": "Erneut versuchen",
+          "open-in-spotify": "In Spotify öffnen",
+          "test-playback": "Wiedergabe testen",
+          "playback-testing": "Wiedergabe wird getestet…",
+          "playback-success": "Die Wiedergabe wurde erfolgreich gestartet.",
+          "playback-error": "Die Wiedergabe konnte nicht gestartet werden.",
+          "preview-label": "Vorschau der Spotify-Quelle",
+          "preview-image-alt": "Cover von {{name}}",
+          "preview-image-unavailable": "Kein Cover für {{name}} verfügbar",
+          "uri-label": "Spotify-Link oder -URI",
+          "uri-hint": "Füge einen Spotify-Link oder eine Spotify-URI für einen Titel, ein Album oder eine Playlist ein.",
           "uri-type": "Typ: {{type}}",
-          "uri-invalid": "Keine gültige Spotify URI (muss mit spotify:track:, spotify:album: oder spotify:playlist: beginnen)"
+          "uri-invalid": "Gib einen gültigen Spotify-Link oder eine gültige Spotify-URI für einen Titel, ein Album oder eine Playlist ein."
         },
         "synchronisation": {
           "rfidcards": {

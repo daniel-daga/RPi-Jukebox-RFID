@@ -19,6 +19,7 @@ const ControlsSelector = ({
   actionData,
   setActionData,
   cardId,
+  onSpotifyValidationChange,
 }) => {
   const { t } = useTranslation();
 
@@ -94,6 +95,7 @@ const ControlsSelector = ({
           <SelectSpotify
             actionData={actionData}
             handleActionDataChange={handleActionDataChange}
+            onValidationChange={onSpotifyValidationChange}
           />
         }
       </Grid>
