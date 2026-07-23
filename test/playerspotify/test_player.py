@@ -3,7 +3,9 @@ import pathlib
 import sys
 import threading
 import types
-from unittest.mock import Mock
+from unittest.mock import Mock, call, patch
+
+import pytest
 
 
 def _identity_decorator(function):
@@ -198,3 +200,65 @@ def test_status_poll_publishes_once_when_spotify_is_active():
     player._build_status.assert_called_once_with()
     player_module.publishing.get_publisher.assert_called_once_with()
     publisher.send.assert_called_once_with('playerstatus', status)
+
+
+def _device_error(status, message='Device not found'):
+    error = RuntimeError(message)
+    error.http_status = status
+    return error
+
+
+def _player_for_start_playback(devices):
+    player = PlayerSpotify.__new__(PlayerSpotify)
+    player._sp = Mock()
+    player._playback_device = Mock(side_effect=devices)
+    return player
+
+
+def test_start_playback_succeeds_without_transfer():
+    player = _player_for_start_playback(['device-id'])
+
+    player._start_playback(context_uri='spotify:playlist:test')
+
+    player._sp.start_playback.assert_called_once_with(
+        device_id='device-id', context_uri='spotify:playlist:test')
+    player._sp.transfer_playback.assert_not_called()
+
+
+def test_start_playback_retries_a_refreshed_device_without_transfer():
+    player = _player_for_start_playback(['stale-id', 'fresh-id'])
+    player._sp.start_playback.side_effect = [RuntimeError('stale'), None]
+
+    player._start_playback(uris=['spotify:track:test'])
+
+    assert player._sp.start_playback.call_args_list == [
+        call(device_id='stale-id', uris=['spotify:track:test']),
+        call(device_id='fresh-id', uris=['spotify:track:test']),
+    ]
+    player._sp.transfer_playback.assert_not_called()
+
+
+def test_start_playback_activates_visible_device_after_device_not_found():
+    player = _player_for_start_playback(['device-id', 'device-id'])
+    player._sp.start_playback.side_effect = [_device_error(404), None]
+
+    with patch.object(player_module.time, 'sleep') as sleep:
+        player._start_playback(context_uri='spotify:playlist:test')
+
+    player._sp.transfer_playback.assert_called_once_with(
+        device_id='device-id', force_play=False)
+    sleep.assert_called_once_with(2)
+    assert player._sp.start_playback.call_args_list == [
+        call(device_id='device-id', context_uri='spotify:playlist:test'),
+        call(device_id='device-id', context_uri='spotify:playlist:test'),
+    ]
+
+
+def test_start_playback_does_not_transfer_for_other_errors():
+    player = _player_for_start_playback(['device-id', 'device-id'])
+    player._sp.start_playback.side_effect = _device_error(403)
+
+    with pytest.raises(RuntimeError, match='Device not found'):
+        player._start_playback(context_uri='spotify:playlist:test')
+
+    player._sp.transfer_playback.assert_not_called()

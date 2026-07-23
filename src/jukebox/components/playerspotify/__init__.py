@@ -22,6 +22,7 @@ Card configuration example (cards.yaml):
 
 import logging
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -585,11 +586,36 @@ class PlayerSpotify:
         device = self._playback_device()
         try:
             self._sp.start_playback(device_id=device, **kwargs)
-        except Exception:
+        except Exception as error:
             refreshed = self._playback_device(refresh=True)
-            if refreshed == device:
+            if refreshed != device:
+                self._sp.start_playback(device_id=refreshed, **kwargs)
+                return
+            if device is None or not self._is_device_not_found(error):
                 raise
-            self._sp.start_playback(device_id=refreshed, **kwargs)
+
+            # A freshly seeded librespot instance can be listed by Spotify but
+            # still reject start_playback with "Device not found" until the
+            # account transfers playback to it once. Activate it, allow the
+            # Connect session to settle, then repeat the original request.
+            logger.info("Spotify: activating Connect device before retrying playback")
+            self._sp.transfer_playback(device_id=device, force_play=False)
+            time.sleep(2)
+            self._sp.start_playback(device_id=device, **kwargs)
+
+    @staticmethod
+    def _is_device_not_found(error) -> bool:
+        """Return whether Spotify rejected an otherwise visible device."""
+        if getattr(error, 'http_status', None) != 404:
+            return False
+        details = ' '.join(
+            str(value) for value in (
+                getattr(error, 'reason', ''),
+                getattr(error, 'msg', ''),
+                error,
+            )
+        )
+        return 'device not found' in details.lower()
 
     @plugs.tag
     def play(self):
