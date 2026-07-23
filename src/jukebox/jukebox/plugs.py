@@ -90,6 +90,7 @@ from typing import (
     Union,
     Any)
 import traceback
+from jukebox.rpc.logging_utils import redact_call_arguments
 
 logger = logging.getLogger('jb.plugin')
 logger_call = logging.getLogger('jb.plugin.call')
@@ -692,7 +693,10 @@ def _call(package: str, plugin: str, method: Optional[str] = None, *,
     """
     if logger_call.isEnabledFor(logging.DEBUG):
         m = f".{method}" if method is not None else ''
-        logger_call.debug(f"Calling: {package}.{plugin}{m}(args={args}, kwargs={kwargs})")
+        log_args, log_kwargs = redact_call_arguments(
+            package, plugin, method, args, kwargs)
+        logger_call.debug(
+            f"Calling: {package}.{plugin}{m}(args={log_args}, kwargs={log_kwargs})")
 
     func, args, kwargs = dereference(package, plugin, method, args=args, kwargs=kwargs)
     if as_thread is True:
