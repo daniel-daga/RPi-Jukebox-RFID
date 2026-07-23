@@ -242,7 +242,13 @@ Update this section as work progresses.
 
 - **Implementation started:** 2026-07-23
 - **Implementation completed:** Not completed
-- **Deployed revision:** Not deployed
+- **Deployed revision:** `f4efc6ec` deployed to `pi@192.168.50.8` on 2026-07-23
+- **Deployment verification:** Timestamped backend/web backups created; backend
+  and production web build uploaded through staging; backend syntax validated;
+  jukebox daemon restarted; jukebox, librespot, MPD, and PulseAudio remained
+  active; ZMQ listeners and HTTP 200 web response verified; no post-restart
+  daemon errors observed. RFID swipe and audible playback verification remain
+  to be performed on the device.
 - **Verification summary:** Phase 1 focused cases passed via a lightweight local
   runner; Python/JavaScript syntax and diff checks passed. Phase 2's focused and
   complete React test suites pass (12 tests), and the production webapp build
