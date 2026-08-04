@@ -223,6 +223,54 @@ Consequences:
 - **Second swipe stays intuitive** — when the other backend played in between,
   a card swipe counts as first swipe again (playback restarts instead of toggling).
 
+## Automated testing without a Raspberry Pi
+
+The Spotify integration is fully autotestable on any machine — no Pi, no
+network, no Spotify account. Two complementary layers live in
+`test/playerspotify/`:
+
+- **Unit tests** (`test_player.py`, `test_auth_code.py`, `test_device_resolver.py`,
+  `test_librespot_seeder.py`) — isolated checks of individual methods with
+  `unittest.mock`.
+- **Scenario tests** (`test_spotify_scenarios.py`) — end-to-end flows against a
+  **stateful Spotify Web API emulator** (`fake_spotify.py`). The harness
+  (`conftest.py`, fixtures `spotify_env` / `make_spotify_env`) boots the *real*
+  code — the full `PlayerSpotify` constructor, the real player arbiter
+  (`components.player`), `NvManager`, `device_resolver` — and fakes only the
+  true boundaries: the Web API, OAuth, the ZMQ publisher, the status poll
+  timer, and wall-clock time.
+
+`FakeSpotify` simulates a Spotify Connect account: a music catalog
+(tracks/albums/playlists), Connect devices, and a playback session whose
+progress advances on a deterministic fake clock (`env.clock.advance(5)` moves
+playback 5 s forward, instantly). It also reproduces the Connect quirks the
+plugin has to handle, so the retry/normalization logic is exercised against
+realistic behaviour instead of canned mock returns:
+
+- a freshly seeded librespot device that is listed but rejects playback until
+  a transfer activates it (`needs_activation`, `rejected_transfers`)
+- stale device ids after a librespot restart (`remove_device` + `add_device`)
+- the negative-progress timeline bug (`progress_offset_ms`)
+
+A typical scenario reads like the user story it verifies:
+
+```python
+def test_second_swipe_toggles(spotify_env):
+    env = spotify_env
+    env.player.play_card(env.playlist_uri)   # first swipe -> plays
+    env.clock.advance(10)
+    env.player.play_card(env.playlist_uri)   # second swipe -> pauses
+    assert not env.spotify.is_playing
+    assert env.last_status()['state'] == 'pause'
+```
+
+Run with `pytest test/playerspotify` (plain `pytest` is enough — the harness
+has no jukebox runtime dependencies). The suite runs in well under a second,
+so it belongs in every pre-push check; the same tests run in the
+`pythonpackage_future3.yml` CI workflow. Manual testing on the Pi is then only
+needed for what genuinely cannot be simulated: audio output, the real
+librespot binary, and Spotify's server-side behaviour.
+
 ## Known Limitations & Future Work
 
 - **Token expiry** — spotipy handles refresh automatically as long as a refresh token
