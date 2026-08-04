@@ -1,0 +1,2 @@
+[mopidy.ext]
+mockspotify = mopidy_mockspotify:Extension

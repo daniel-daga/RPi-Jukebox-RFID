@@ -1,0 +1,4 @@
+Metadata-Version: 2.1
+Name: Mopidy-MockSpotify
+Version: 0.1.0
+Summary: Mock Spotify backend for Mopidy, used by Phoniebox CI tests
