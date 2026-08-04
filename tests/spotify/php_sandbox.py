@@ -35,8 +35,13 @@ class PhpSandbox:
             (folder / filename).touch()
         return folder
 
-    def playlist(self, folder, recursive=False):
-        """Run the real PHP playlist generator, return non-empty lines."""
+    def playlist_raw(self, folder, recursive=False):
+        """Run the real PHP playlist generator, return its exact output.
+
+        Prefer this over playlist(): the m3u is written to disk verbatim,
+        so blank lines and stray whitespace are part of the behaviour and
+        assertions should be able to see them.
+        """
         cmd = [
             "php",
             str(self.root / "scripts" / "playlist_recursive_by_folder.php"),
@@ -45,8 +50,20 @@ class PhpSandbox:
         ]
         if recursive:
             cmd += ["--list", "recursive"]
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        return [line for line in result.stdout.splitlines() if line.strip()]
+        return subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
+
+    def playlist(self, folder, recursive=False):
+        """Entries only, with blank lines dropped.
+
+        Convenience for assertions about *which* entries are generated;
+        it deliberately normalises away whitespace artifacts, so use
+        playlist_raw() when the exact file content matters.
+        """
+        return [
+            line
+            for line in self.playlist_raw(folder, recursive).splitlines()
+            if line.strip()
+        ]
 
 
 def make_php_sandbox(tmp_path, edition="plusSpotify", audio_folders_dir=None):

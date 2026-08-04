@@ -10,6 +10,7 @@ import wave
 import pytest
 
 from mpd_client import MPDClient
+from phoniebox_sandbox import make_phoniebox_sandbox
 
 TESTS_DIR = pathlib.Path(__file__).resolve().parent
 REPO_ROOT = TESTS_DIR.parents[1]
@@ -23,6 +24,9 @@ SPECIAL_CLIENT_ID = (
 SPECIAL_CLIENT_SECRET = "myclient+SECRET/0123456789="
 
 MOPIDY_STARTUP_TIMEOUT = 90
+
+# The port the Phoniebox shell scripts expect MPD/Mopidy on
+DEFAULT_MPD_PORT = 6600
 
 
 def find_mopidy_python():
@@ -66,6 +70,35 @@ def get_free_port():
         return sock.getsockname()[1]
 
 
+def port_is_free(port):
+    """Can a server bind this port right now?
+
+    SO_REUSEADDR matters: after a previous run, connections accepted on
+    the port linger in TIME_WAIT and a plain bind fails even though no
+    server is listening. Mopidy sets the option like any server does, so
+    checking without it reports the port as taken and silently skips the
+    tests that need it.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            sock.bind(("127.0.0.1", port))
+        except OSError:
+            return False
+    return True
+
+
+def pick_mpd_port():
+    """Prefer the standard MPD port.
+
+    The Phoniebox shell scripts talk to 'localhost 6600' hardcoded
+    (e.g. resume_play.sh, rfid_trigger_play.sh), so they can only be
+    tested when the test instance owns that port. Everything else works
+    on any port, so fall back to a free one if 6600 is taken.
+    """
+    return DEFAULT_MPD_PORT if port_is_free(DEFAULT_MPD_PORT) else get_free_port()
+
+
 def write_silence_wav(path, seconds=30):
     with wave.open(str(path), "wb") as wav:
         wav.setnchannels(1)
@@ -81,6 +114,10 @@ class MopidyServer:
         self.playlists_dir = playlists_dir
         self.audio_folders_dir = audio_folders_dir
         self.log_file = log_file
+
+    @property
+    def on_default_mpd_port(self):
+        return self.port == DEFAULT_MPD_PORT
 
     def logs(self):
         return self.log_file.read_text(errors="replace")
@@ -124,11 +161,12 @@ def mopidy(tmp_path_factory):
         check=True,
     )
 
-    port = get_free_port()
-    # Overrides for a headless CI environment: no sound card (fakesink),
-    # no HTTP frontend, and the extensions that are not installed in CI
-    # (spotify, iris, local) are disabled. Mopidy would only warn about
-    # their config sections anyway, but disabling keeps the log clean.
+    port = pick_mpd_port()
+    # Only override what a headless test run actually requires: no sound
+    # card, loopback-only network, the playlists dir, and the real
+    # Spotify backend swapped for the mock. Everything else (notably
+    # [local] and [file]) is left as generated from the shipped sample,
+    # so a broken section there fails the boot instead of being masked.
     override_conf = tmp / "override.conf"
     override_conf.write_text(
         f"""\
@@ -149,18 +187,12 @@ hostname = 127.0.0.1
 port = {port}
 
 [http]
-enabled = false
-
-[file]
-enabled = false
+hostname = 127.0.0.1
+port = {get_free_port()}
 
 [spotify]
-enabled = false
-
-[iris]
-enabled = false
-
-[local]
+# the real backend needs credentials and network; mockspotify below
+# registers the same 'spotify:' URI scheme instead
 enabled = false
 
 [m3u]
@@ -216,6 +248,31 @@ media_file = {media_file}
     except subprocess.TimeoutExpired:
         proc.kill()
         proc.wait()
+
+
+@pytest.fixture()
+def phoniebox(tmp_path, mopidy, mpd):
+    """A Phoniebox tree whose real shell scripts drive the test Mopidy."""
+    # Skipping here silently drops the only coverage of the shell
+    # scripts, so CI sets REQUIRE_SHELL_TESTS=1 to turn that into a
+    # failure instead of an unnoticed green run.
+    strict = os.environ.get("REQUIRE_SHELL_TESTS") == "1"
+
+    def unavailable(reason):
+        if strict:
+            pytest.fail(f"{reason} (REQUIRE_SHELL_TESTS=1)")
+        pytest.skip(reason)
+
+    if not mopidy.on_default_mpd_port:
+        unavailable(
+            f"port {DEFAULT_MPD_PORT} was taken, so the shell scripts "
+            "(which hardcode 'localhost 6600') cannot reach the test instance"
+        )
+    if shutil.which("nc") is None:
+        unavailable("netcat is required by resume_play.sh")
+    return make_phoniebox_sandbox(
+        tmp_path, mopidy.audio_folders_dir, mopidy.playlists_dir
+    )
 
 
 @pytest.fixture()

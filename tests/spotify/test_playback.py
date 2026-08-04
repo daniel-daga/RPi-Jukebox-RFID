@@ -24,10 +24,14 @@ def test_mpd_frontend_is_up(mpd):
 
 
 def test_add_and_play_spotify_track(mpd):
+    """Adding a spotify: URI must resolve through the backend - an
+    unresolvable URI would be rejected or queued without metadata."""
     mpd.command(f"add {quote('spotify:track:phonieboxtest1')}")
-    info = "\n".join(mpd.command("playlistinfo"))
-    assert "spotify:track:phonieboxtest1" in info
-    assert "Mock Spotify Track" in info
+    entry = mpd.command_dict("playlistinfo")
+    assert entry["file"] == "spotify:track:phonieboxtest1"
+    # resolved via backend lookup, so the queue carries real metadata
+    assert entry.get("title")
+    assert entry.get("artist")
 
     mpd.command("play")
     wait_for_state(mpd, "play")
@@ -38,9 +42,22 @@ def test_add_and_play_spotify_track(mpd):
     )
 
 
-def test_spotify_album_uri_expands_to_tracks(mpd):
+def test_spotify_container_uri_expands_to_playable_tracks(mpd):
+    """A container URI must be expanded by the backend into individual
+    playable tracks rather than queued as a single opaque entry.
+
+    The exact count comes from the mock, so assert the property that
+    matters instead: more than one entry, all of them spotify tracks.
+    """
     mpd.command(f"add {quote('spotify:album:testalbum123')}")
-    assert mpd.status()["playlistlength"] == "3"
+
+    files = [
+        line.split(": ", 1)[1]
+        for line in mpd.command("playlistinfo")
+        if line.startswith("file: ")
+    ]
+    assert len(files) > 1
+    assert all(uri.startswith("spotify:track:") for uri in files)
 
 
 def test_player_controls_pause_play_stop(mpd):

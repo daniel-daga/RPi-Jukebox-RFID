@@ -64,6 +64,22 @@ def test_special_characters_survive_substitution(tmp_path):
     assert parsed["spotify"]["client_secret"] == SPECIAL_CLIENT_SECRET
 
 
+def test_generated_config_sections_are_validated_by_mopidy(mopidy):
+    """The test instance boots from the generated config, so a malformed
+    section fails the whole run rather than being ignored.
+
+    This only holds for sections whose extension is installed. 'iris' is
+    pip-only and 'spotify' is deliberately replaced by the mock backend,
+    so Mopidy skips those two - they are not covered here.
+    """
+    logs = mopidy.logs()
+    for section in ("local", "file", "m3u", "mpd", "http"):
+        assert f"Ignoring config section '{section}'" not in logs, (
+            f"[{section}] was not validated - the extension is missing, so a "
+            f"broken [{section}] config would pass unnoticed"
+        )
+
+
 def test_generated_conf_is_wellformed(tmp_path):
     """The whole file must stay parseable after substitution."""
     conf = generate_conf(tmp_path, SPECIAL_CLIENT_ID, SPECIAL_CLIENT_SECRET, "/audio")

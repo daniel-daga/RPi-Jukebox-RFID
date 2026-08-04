@@ -22,7 +22,12 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get -y install mopidy mopidy-mpd mpc gstreamer1.0-plugins-good php-cli python3-pytest
+        sudo apt-get -y install mopidy mopidy-mpd mopidy-local mpc \
+            gstreamer1.0-plugins-good php-cli netcat-openbsd python3-pytest
 
     - name: Run Spotify feature tests
+      # fail instead of skip if the shell-script tests cannot run, so
+      # losing that coverage can never look like a green run
+      env:
+        REQUIRE_SHELL_TESTS: '1'
       run: ./tests/spotify/run_tests.sh
