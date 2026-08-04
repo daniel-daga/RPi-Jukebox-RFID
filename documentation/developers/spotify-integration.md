@@ -7,6 +7,7 @@ Spotify playback (tracks, albums, playlists) alongside the existing MPD local-mu
 Both players coexist — local music via MPD and Spotify run independently.
 
 **Requirements:**
+
 - Spotify Premium account
 - Spotify Developer App (free, created at developer.spotify.com)
 - `spotipy` Python library (`pip install spotipy`)
@@ -18,7 +19,7 @@ Both players coexist — local music via MPD and Spotify run independently.
 ### Backend
 
 | Path | Purpose |
-|------|---------|
+| ------ | --------- |
 | `src/jukebox/components/playerspotify/__init__.py` | Main plugin — OAuth server, playback control, RPC methods |
 | `src/jukebox/components/playerspotify/auth_code.py` | Pure helper — extracts the OAuth code from a pasted redirect URL |
 | `src/jukebox/components/playerspotify/requirements.txt` | Python dependency: `spotipy>=2.23.0` |
@@ -28,7 +29,7 @@ Both players coexist — local music via MPD and Spotify run independently.
 ### Frontend (webapp)
 
 | Path | Purpose |
-|------|---------|
+| ------ | --------- |
 | `src/webapp/src/components/Settings/spotify/index.js` | Settings card container — owns auth status, switches wizard ↔ settings view |
 | `src/webapp/src/components/Settings/spotify/wizard.js` | Guided first-time setup (stepper): create app → credentials → connect |
 | `src/webapp/src/components/Settings/spotify/utils.js` | Redirect-URI helpers (suggested Pi URI, loopback fallback) |
@@ -56,6 +57,7 @@ player: playermpd        # keeps working as before
 ```
 
 Inside the plugin:
+
 ```python
 plugs.register(player_ctrl, name='ctrl')
 # Accessible as: spotify.ctrl.<method>
@@ -84,7 +86,7 @@ and pastes it into the connect step of the web UI; `submit_auth_code()` extracts
 
 ### Card → Playback Flow
 
-```
+```text
 RFID swipe
   └─▶ cards.yaml lookup → { package: spotify, plugin: ctrl, method: play_card, args: [uri] }
         └─▶ spotify.ctrl.play_card(uri)
@@ -100,9 +102,11 @@ same pattern as MPD's `music_player_status.json`.
 - `device_id = None` (default) → Spotify plays on whichever device is currently active.
 - Set a specific device via Settings UI → saved to `spotify_player_status.json`.
 - For the Pi to be the playback device itself, install **raspotify**:
+
   ```bash
   curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
   ```
+
   Then open Spotify on any device, the Pi appears as a Connect device named "Raspotify".
 
 ---
@@ -138,7 +142,7 @@ The whole setup runs from the web UI. Open **Settings → Spotify** — until th
 connected, a guided wizard walks through all steps:
 
 1. **Create a Spotify Developer App** — the wizard links to
-   https://developer.spotify.com/dashboard and shows the exact Redirect URI to add,
+   <https://developer.spotify.com/dashboard> and shows the exact Redirect URI to add,
    derived from the address the web UI is opened on (with a copy button). If Spotify's
    dashboard rejects that address (plain HTTP is only accepted for loopback), the wizard
    offers `http://127.0.0.1:8888/callback` as the alternative.
@@ -153,12 +157,13 @@ connected, a guided wizard walks through all steps:
 
 Once connected, the card switches to the regular settings (device, second-swipe action).
 
-4. **Pick a device** *(optional)* — by default playback goes to the librespot instance
+1. **Pick a device** *(optional)* — by default playback goes to the librespot instance
    on the Pi itself (device name `Phoniebox`). Select a different Spotify Connect device
    under *Playback Device* if desired.
 
-5. **Map cards** — either via the Cards UI (action *Spotify*) or in
+2. **Map cards** — either via the Cards UI (action *Spotify*) or in
    `shared/settings/cards.yaml`:
+
    ```yaml
    '0123456789':
      package: spotify
@@ -166,6 +171,7 @@ Once connected, the card switches to the regular settings (device, second-swipe 
      method: play_card
      args: ['spotify:playlist:37i9dQZF1DXcBWIGoYBM5M']
    ```
+
    Get the URI from Spotify: right-click any track/album/playlist → *Share* → *Copy URI*.
 
 The module ships enabled in `jukebox.default.yaml` (`spotify: playerspotify` under
@@ -177,7 +183,7 @@ The module ships enabled in `jukebox.default.yaml` (`spotify: playerspotify` und
 ## RPC Methods (spotify.ctrl)
 
 | Method | Args | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | `play_card` | `uri: str` | Main RFID entry point — first/second swipe logic |
 | `play_uri` | `uri: str` | Play a Spotify URI directly (no swipe logic) |
 | `play` | — | Resume playback |

@@ -15,7 +15,7 @@ project check out the [documentation of Version 2](<https://github.com/MiczFlor/
 
 ## Where are the Help pages?
 
-The documentation can be found [here](./documentation/README.md)
+Find the documentation [in the documentation section](./documentation/README.md)
 
 ## Installation?
 

@@ -122,7 +122,7 @@ $ pactl list sinks short
 Which means we can put any of these as sink into the jukebox configuration file (if there is any need).
 
 Mono down mix is enabled by the module `module-remap-sink`
-for which documentation and an example can be found [here](https://www.freedesktop.org/wiki/Software/PulseAudio/Documentation/User/Modules/#module-remap-sink).
+for which documentation and an example can be found [in the PulseAudio module-remap-sink documentation](https://www.freedesktop.org/wiki/Software/PulseAudio/Documentation/User/Modules/#module-remap-sink).
 
 The equalizer is the PulseAudio module `module-ladspa-sink` with the [corresponding documentation](https://www.freedesktop.org/wiki/Software/PulseAudio/Documentation/User/Modules/#module-ladspa-sink).
 

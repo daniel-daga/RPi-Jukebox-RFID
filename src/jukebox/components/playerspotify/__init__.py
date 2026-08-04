@@ -117,6 +117,22 @@ def _artist_subtitle(item):
     )
 
 
+def _resolve_error_code(error):
+    """Map a Spotify API failure to a stable RPC error code.
+
+    :return: Tuple (error code, HTTP status or None)
+    """
+    status = getattr(error, 'http_status', None)
+    if (status in (401, 403)
+            or error.__class__.__name__ in ('SpotifyOauthError',
+                                            'SpotifyStateError',
+                                            'SpotifyImplicitGrantError')):
+        return 'authentication_unavailable', status
+    if status == 404:
+        return 'not_found', status
+    return 'spotify_unavailable', status
+
+
 class _OAuthCallbackHandler(BaseHTTPRequestHandler):
     """Tiny HTTP handler that catches the Spotify OAuth redirect"""
 
@@ -632,18 +648,7 @@ class PlayerSpotify:
         try:
             spotify_item = getattr(self._sp, source['type'])(source['id'])
         except Exception as error:
-            status = getattr(error, 'http_status', None)
-            if (status in (401, 403)
-                    or error.__class__.__name__ in (
-                        'SpotifyOauthError',
-                        'SpotifyStateError',
-                        'SpotifyImplicitGrantError',
-                    )):
-                error_code = 'authentication_unavailable'
-            elif status == 404:
-                error_code = 'not_found'
-            else:
-                error_code = 'spotify_unavailable'
+            error_code, status = _resolve_error_code(error)
             logger.warning(
                 "Spotify source resolution failed (%s, HTTP status %s)",
                 error.__class__.__name__,

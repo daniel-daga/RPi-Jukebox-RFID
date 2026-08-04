@@ -45,4 +45,4 @@ Most HiFiBerry boards come with 40-pin header that you can directly attach to yo
 | PCM_DIN        | 38        | 38               | GPIO20       |
 | PCM_DOUT       | 40        | 40               | GPIO21       |
 
-You can find more information about manually wiring [here](https://forum-raspberrypi.de/forum/thread/44967-kein-ton-ueber-hifiberry-miniamp-am-rpi-4/?postID=401305#post401305).
+You can find more information about manually wiring [in this Raspberry Pi forum thread](https://forum-raspberrypi.de/forum/thread/44967-kein-ton-ueber-hifiberry-miniamp-am-rpi-4/?postID=401305#post401305).

@@ -11,9 +11,10 @@ results and the remaining audible Bluetooth check.
 
 ---
 
-### Task 1: Spotify status and album art
+## Task 1: Spotify status and album art
 
 **Files:**
+
 - Create: `test/playerspotify/test_player.py`
 - Modify: `src/jukebox/components/playerspotify/__init__.py`
 
@@ -25,9 +26,10 @@ results and the remaining audible Bluetooth check.
 6. Run the focused tests and existing `test/playerspotify` tests.
 7. Self-review the diff and report commands/results.
 
-### Task 2: Player arbiter and routing coverage
+## Task 2: Player arbiter and routing coverage
 
 **Files:**
+
 - Create: `test/player/test_arbiter.py`
 - Modify only if a demonstrated bug requires it: `src/jukebox/components/player/__init__.py`
 - Modify only if a demonstrated bug requires it: `src/jukebox/components/playermpd/__init__.py`
@@ -39,9 +41,10 @@ results and the remaining audible Bluetooth check.
 5. Run the complete arbiter test file and relevant existing player tests.
 6. Self-review the diff and report commands/results.
 
-### Task 3: Web player album-art behavior
+## Task 3: Web player album-art behavior
 
 **Files:**
+
 - Create: `src/webapp/src/components/Player/index.test.js`
 - Modify: `src/webapp/src/components/Player/index.js`
 
@@ -56,7 +59,7 @@ results and the remaining audible Bluetooth check.
 9. Keep the current build command unless a reproducible memory failure occurs.
 10. Self-review the diff and report commands/results.
 
-### Task 4: Local integration verification
+## Task 4: Local integration verification
 
 1. Create a project-local Python environment using an available supported interpreter.
 2. Install only the dependencies needed for the test suite, adding broader requirements only when a concrete import requires them.
@@ -65,7 +68,7 @@ results and the remaining audible Bluetooth check.
 5. Run the focused React tests and `npm run build` from `src/webapp`.
 6. Inspect the full diff and run a final independent code review.
 
-### Task 5: Pi preflight, backup, and deployment
+## Task 5: Pi preflight, backup, and deployment
 
 1. Connect with Paramiko to `pi@192.168.50.8`, configuring stdout as UTF-8 with replacement.
 2. Read `jukebox-daemon.service` and `librespot.service` to derive deploy paths, Python environment, config path, and web root.
@@ -78,7 +81,7 @@ results and the remaining audible Bluetooth check.
 9. Verify all services active, ZMQ listeners present, no new import/OAuth/device errors, and librespot version 0.5 or newer.
 10. Roll back from backups if health checks fail.
 
-### Task 6: End-to-end verification and TODO closure
+## Task 6: End-to-end verification and TODO closure
 
 1. Verify Spotify configuration/device selection through RPC or web UI without exposing secrets.
 2. Ask the user only for unavoidable OAuth consent/manual redirect completion.

@@ -5,11 +5,11 @@
 * Structure of files and folders
 * How to contribute
 
-# Differences to Version 2
+## Differences to Version 2
 
 The naming conventions have changed from Version 2 to Version 3. Do use the new naming convention!
 
-# Naming conventions
+## Naming conventions
 
 The Jukebox core app is written entirely in Python. Therefore, we follow the [Python Style Guide](https://www.python.org/dev/peps/pep-0008/).
 
@@ -27,7 +27,7 @@ The Jukebox core app is written entirely in Python. Therefore, we follow the [Py
 * **Documentation**
   * You are expected to write some Documentation. It's easy. **Very** easy actually with [Python Docstrings](https://www.geeksforgeeks.org/python-docstrings/)
   
-# Structure of files and folders
+## Structure of files and folders
 
 Inside the root folder or the repo, these folders are important:
 
@@ -41,7 +41,7 @@ Inside the root folder or the repo, these folders are important:
 All folders on all hierarchy levels starting with `scratch*` are ignored by git and flake8. These are intended
 as local, temporary scratch areas.
 
-# How to contribute
+## How to contribute
 
 Contributors have played a bigger role over time to keep Phoniebox on the edge of innovation :)
 
