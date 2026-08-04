@@ -63,18 +63,23 @@ assertions describe the mock, not Phoniebox.
   `playout_controls.sh` uses, loading `.m3u` playlists by name, and a
   smoke test through the real `mpc` binary.
 
-### Known defects recorded as xfail
+### Defects these tests found and now guard against
 
-Two `xfail(strict=True)` tests state intended behaviour that the code
-does not currently deliver. They fail the suite if the behaviour is
-fixed, as a prompt to remove the marker:
+Each was reproduced by a failing test first, then fixed:
 
-- `spotify.txt` is read with `file_get_contents()` and never trimmed
-  (unlike the podcast branch), so a blank line lands in the generated
-  m3u. Harmless for Mopidy today.
-- The classic-edition branch is commented "M3U will contain normal
-  relative path" but emits an absolute one, because `$folder` is already
-  absolute and the `substr()` strips only one of the two prefixes.
+- `spotify.txt` and `livestream.txt` were read with `file_get_contents()`
+  and never trimmed (unlike the podcast branch), so a blank line landed
+  in the generated m3u. A CRLF file saved over the Samba share left the
+  `\r` in the URI.
+- The classic-edition branch was commented "M3U will contain normal
+  relative path" but emitted an absolute one, because `$folder` is
+  already absolute and the `substr()` stripped only one of the two
+  prefixes. Real MPD resolves both forms against `music_directory`, so
+  this was latent rather than visibly broken.
+- `rfid_trigger_play.sh` and `resume_play.sh` sourced
+  `inc.writeGlobalConfig.sh` without a path, so bootstrapping a missing
+  `settings/global.conf` only worked when the caller's working directory
+  happened to be `scripts/`.
 
 ### Not covered
 

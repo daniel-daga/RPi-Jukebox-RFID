@@ -51,7 +51,7 @@ fi
 # Read global configuration file (and create is not exists)
 # create the global configuration file from single files - if it does not exist
 if [ ! -f $PATHDATA/../settings/global.conf ]; then
-    . inc.writeGlobalConfig.sh
+    . $PATHDATA/inc.writeGlobalConfig.sh
 fi
 . $PATHDATA/../settings/global.conf
 ###########################################################

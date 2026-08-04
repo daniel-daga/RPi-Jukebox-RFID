@@ -71,12 +71,45 @@ def test_trigger_play_records_latest_playlist(phoniebox, mpd):
     assert latest.strip() == "Master % Sub2"
 
 
+def test_bootstraps_global_conf_when_missing(phoniebox_factory, mpd):
+    """On a box without settings/global.conf (first run after a fresh
+    checkout) the script has to create it and still play.
+
+    It is invoked by systemd and by the web UI, so it cannot rely on the
+    caller's working directory being scripts/.
+    """
+    phoniebox = phoniebox_factory(write_global_conf=False)
+    global_conf = phoniebox.root / "settings" / "global.conf"
+    assert not global_conf.exists()
+
+    phoniebox.add_spotify_folder("Bootstrap", "spotify:album:bootstrap1")
+    result = phoniebox.trigger_play("-d=Bootstrap")
+
+    assert "inc.writeGlobalConfig.sh: No such file" not in result.stderr, (
+        "the include was not resolved relative to the script location"
+    )
+    assert global_conf.is_file(), "global.conf was not created"
+    wait_until(lambda: queue_files(mpd), "the queue to be filled by the script")
+
+
+def test_resume_play_bootstraps_global_conf_when_missing(phoniebox_factory):
+    """resume_play.sh carries the same bootstrap block."""
+    phoniebox = phoniebox_factory(write_global_conf=False)
+    global_conf = phoniebox.root / "settings" / "global.conf"
+    phoniebox.add_spotify_folder("ResumeBootstrap", "spotify:album:resume1")
+
+    result = phoniebox.run("resume_play.sh", "-c=resume", "-d=ResumeBootstrap")
+
+    assert "inc.writeGlobalConfig.sh: No such file" not in result.stderr, (
+        "the include was not resolved relative to the script location"
+    )
+    assert global_conf.is_file(), "global.conf was not created"
+
+
 def test_generated_m3u_is_written_verbatim(phoniebox):
-    """The m3u on disk is exactly what the PHP generator emitted -
-    including the stray blank line from the untrimmed spotify.txt, which
-    test_playlist_generation.py tracks as a known defect."""
+    """The m3u on disk is exactly what the PHP generator emitted."""
     phoniebox.add_spotify_folder("Blankline", "spotify:album:shellblank")
     phoniebox.trigger_play("-d=Blankline")
 
     content = phoniebox.playlist_file("Blankline").read_text()
-    assert content == "spotify:album:shellblank\n\n"
+    assert content == "spotify:album:shellblank\n"

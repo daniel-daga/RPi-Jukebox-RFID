@@ -140,13 +140,13 @@ foreach($folders as $folder) {
             /*
             * Read content of the file and add to the array
             */
-            $livestreamURL = file_get_contents($folder."/livestream.txt");
+            $livestreamURL = trim(file_get_contents($folder."/livestream.txt"));
             $folder_files = array($livestreamURL);
         } elseif(file_exists($folder."/spotify.txt")) {
             /*
             * Read content of the file and add to the array
             */
-            $spotifyURL = file_get_contents($folder."/spotify.txt");
+            $spotifyURL = trim(file_get_contents($folder."/spotify.txt"));
             $folder_files = array($spotifyURL);
         } else {
             /*
@@ -203,8 +203,11 @@ foreach($folders as $folder) {
 				}
 			} elseif ($edition == "classic") {
 				// M3U will contain normal relative path
+				// $folder is already absolute, so only the audio folders
+				// prefix has to be stripped to make it relative to the
+				// music_directory configured in mpd.conf
 				foreach ($folder_files as $key => $value) {
-					$folder_files[$key] = substr($Audio_Folders_Path."/".$folder."/".$value, strlen($Audio_Folders_Path) + 1, strlen($folder."/".$value));
+					$folder_files[$key] = substr($folder."/".$value, strlen($Audio_Folders_Path) + 1);
 				}
 			}
             /* 

@@ -52,7 +52,7 @@ class PhonieboxSandbox:
 
 
 def make_phoniebox_sandbox(tmp_path, audio_folders_dir, playlists_dir,
-                           edition="plusSpotify"):
+                           edition="plusSpotify", write_global_conf=True):
     root = tmp_path / "phoniebox"
     root.mkdir()
     for item in ("scripts", "htdocs", "settings"):
@@ -73,17 +73,17 @@ def make_phoniebox_sandbox(tmp_path, audio_folders_dir, playlists_dir,
     (settings / "Latest_Folder_Played").write_text("")
     (settings / "Latest_Playlist_Played").write_text("")
 
-    # Build settings/global.conf the way a running box does. It has to be
-    # sourced from within scripts/ because rfid_trigger_play.sh refers to
-    # 'inc.writeGlobalConfig.sh' without a path and would otherwise only
-    # find it when the caller's working directory happens to be scripts/.
-    subprocess.run(
-        ["bash", "-c", ". ./inc.writeGlobalConfig.sh"],
-        cwd=root / "scripts",
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
+    # Build settings/global.conf the way a running box does. Pass
+    # write_global_conf=False to test the scripts' own bootstrap path,
+    # which has to create the file when it is missing.
+    if write_global_conf:
+        subprocess.run(
+            ["bash", "-c", ". ./inc.writeGlobalConfig.sh"],
+            cwd=root / "scripts",
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
 
     return PhonieboxSandbox(root, pathlib.Path(audio_folders_dir),
                             pathlib.Path(playlists_dir))

@@ -251,8 +251,14 @@ media_file = {media_file}
 
 
 @pytest.fixture()
-def phoniebox(tmp_path, mopidy, mpd):
-    """A Phoniebox tree whose real shell scripts drive the test Mopidy."""
+def phoniebox(phoniebox_factory):
+    """A ready-to-use Phoniebox tree (settings/global.conf already built)."""
+    return phoniebox_factory()
+
+
+@pytest.fixture()
+def phoniebox_factory(tmp_path, mopidy, mpd):
+    """Builds Phoniebox trees whose real shell scripts drive the test Mopidy."""
     # Skipping here silently drops the only coverage of the shell
     # scripts, so CI sets REQUIRE_SHELL_TESTS=1 to turn that into a
     # failure instead of an unnoticed green run.
@@ -270,9 +276,13 @@ def phoniebox(tmp_path, mopidy, mpd):
         )
     if shutil.which("nc") is None:
         unavailable("netcat is required by resume_play.sh")
-    return make_phoniebox_sandbox(
-        tmp_path, mopidy.audio_folders_dir, mopidy.playlists_dir
-    )
+
+    def factory(**kwargs):
+        return make_phoniebox_sandbox(
+            tmp_path, mopidy.audio_folders_dir, mopidy.playlists_dir, **kwargs
+        )
+
+    return factory
 
 
 @pytest.fixture()

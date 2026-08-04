@@ -22,10 +22,15 @@ class PhpSandbox:
         (self.root / "settings" / "edition").write_text(edition + "\n")
 
     def add_spotify_folder(self, name, uri):
+        # like a real spotify.txt written over samba/web UI: trailing newline
+        return self.write_uri_file(name, "spotify.txt", uri + "\n")
+
+    def write_uri_file(self, name, filename, content):
+        """Create a folder holding a URI file (spotify.txt, livestream.txt,
+        podcast.txt) with exact content, including line endings."""
         folder = self.audio_folders_dir / name
         folder.mkdir(parents=True, exist_ok=True)
-        # like a real spotify.txt written over samba/web UI: trailing newline
-        (folder / "spotify.txt").write_text(uri + "\n")
+        (folder / filename).write_text(content, newline="")
         return folder
 
     def add_local_folder(self, name, filenames):
