@@ -12,12 +12,14 @@
 ## Key Development Areas
 
 ### Backend Architecture
+
 - **Modular Components:** Pluggable hardware/feature modules in `src/jukebox/components/`
 - **Core Daemon:** `src/jukebox/jukebox/daemon.py` orchestrates plugins
 - **Configuration:** YAML-based, templates in `resources/default-settings/`
 - **Hardware Abstraction:** Multiple RFID readers, audio devices, GPIO control
 
 ### Testing Approach
+
 - **Framework:** pytest with coverage tracking
 - **Mock Support:** Comprehensive mocks for hardware (GPIO, readers) to test without physical devices
 - **CI/CD:** GitHub Actions workflows for testing (python, docker, webapp)
@@ -47,7 +49,7 @@
 
 ## File Organization Reference
 
-```
+```text
 src/jukebox/
 ├── components/              # Hardware/feature modules (stateless)
 │   ├── player*/             # Audio playback implementations
@@ -65,6 +67,7 @@ src/jukebox/
 ## Common Tasks
 
 ### Adding a Feature or Component
+
 1. Create module in `src/jukebox/components/`
 2. Follow plugin interface pattern
 3. Add YAML config template to `resources/default-settings/`
@@ -72,6 +75,7 @@ src/jukebox/
 5. Update documentation in `documentation/developers/`
 
 ### Fixing a Bug
+
 1. Identify affected component
 2. Write a test that reproduces the issue
 3. Fix the code
@@ -79,6 +83,7 @@ src/jukebox/
 5. Check if configuration or documentation needs updating
 
 ### Modifying Configuration
+
 1. Update YAML template in `resources/default-settings/`
 2. Update `cfghandler.py` if schema changes
 3. Add migration notes to documentation if breaking
@@ -128,6 +133,7 @@ src/jukebox/
 ## Questions or Issues?
 
 When stuck:
+
 1. Check the component's `__init__.py` for plugin interface
 2. Look at similar components for patterns
 3. Review existing tests for usage examples

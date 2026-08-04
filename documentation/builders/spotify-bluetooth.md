@@ -148,7 +148,7 @@ output. A second tap of the same card toggles pause/play (configurable via
 ## Troubleshooting
 
 | Symptom | Fix |
-|---|---|
+| --- | --- |
 | "redirect_uri: Not matching configuration" | The URI in the Spotify dashboard must exactly match the URI configured in the Jukebox |
 | Card starts playback on your phone instead of the Pi | librespot is not running or its name doesn't match `device_name`. Check `systemctl --user status librespot.service` |
 | "No Connect device named 'Phoniebox' found" in the logs | Restart the jukebox service so the automatic librespot login runs again; check the log for `librespot auto-login` messages. Fallback: select the device once in any Spotify app |

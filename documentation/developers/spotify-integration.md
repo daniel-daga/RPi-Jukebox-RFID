@@ -7,6 +7,7 @@ Spotify playback (tracks, albums, playlists) alongside the existing MPD local-mu
 Both players coexist — local music via MPD and Spotify run independently.
 
 **Requirements:**
+
 - Spotify Premium account
 - Spotify Developer App (free, created at developer.spotify.com)
 - `spotipy` Python library (`pip install spotipy`)
@@ -18,7 +19,7 @@ Both players coexist — local music via MPD and Spotify run independently.
 ### Backend
 
 | Path | Purpose |
-|------|---------|
+| ------ | --------- |
 | `src/jukebox/components/playerspotify/__init__.py` | Main plugin — OAuth server, playback control, RPC methods |
 | `src/jukebox/components/playerspotify/auth_code.py` | Pure helper — extracts the OAuth code from a pasted redirect URL |
 | `src/jukebox/components/playerspotify/requirements.txt` | Python dependency: `spotipy>=2.23.0` |
@@ -28,7 +29,7 @@ Both players coexist — local music via MPD and Spotify run independently.
 ### Frontend (webapp)
 
 | Path | Purpose |
-|------|---------|
+| ------ | --------- |
 | `src/webapp/src/components/Settings/spotify/index.js` | Settings card container — owns auth status, switches wizard ↔ settings view |
 | `src/webapp/src/components/Settings/spotify/wizard.js` | Guided first-time setup (stepper): create app → credentials → connect |
 | `src/webapp/src/components/Settings/spotify/utils.js` | Redirect-URI helpers (suggested Pi URI, loopback fallback) |
@@ -56,6 +57,7 @@ player: playermpd        # keeps working as before
 ```
 
 Inside the plugin:
+
 ```python
 plugs.register(player_ctrl, name='ctrl')
 # Accessible as: spotify.ctrl.<method>
@@ -84,7 +86,7 @@ and pastes it into the connect step of the web UI; `submit_auth_code()` extracts
 
 ### Card → Playback Flow
 
-```
+```text
 RFID swipe
   └─▶ cards.yaml lookup → { package: spotify, plugin: ctrl, method: play_card, args: [uri] }
         └─▶ spotify.ctrl.play_card(uri)
@@ -100,9 +102,11 @@ same pattern as MPD's `music_player_status.json`.
 - `device_id = None` (default) → Spotify plays on whichever device is currently active.
 - Set a specific device via Settings UI → saved to `spotify_player_status.json`.
 - For the Pi to be the playback device itself, install **raspotify**:
+
   ```bash
   curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
   ```
+
   Then open Spotify on any device, the Pi appears as a Connect device named "Raspotify".
 
 ---
@@ -138,7 +142,7 @@ The whole setup runs from the web UI. Open **Settings → Spotify** — until th
 connected, a guided wizard walks through all steps:
 
 1. **Create a Spotify Developer App** — the wizard links to
-   https://developer.spotify.com/dashboard and shows the exact Redirect URI to add,
+   <https://developer.spotify.com/dashboard> and shows the exact Redirect URI to add,
    derived from the address the web UI is opened on (with a copy button). If Spotify's
    dashboard rejects that address (plain HTTP is only accepted for loopback), the wizard
    offers `http://127.0.0.1:8888/callback` as the alternative.
@@ -153,12 +157,13 @@ connected, a guided wizard walks through all steps:
 
 Once connected, the card switches to the regular settings (device, second-swipe action).
 
-4. **Pick a device** *(optional)* — by default playback goes to the librespot instance
+1. **Pick a device** *(optional)* — by default playback goes to the librespot instance
    on the Pi itself (device name `Phoniebox`). Select a different Spotify Connect device
    under *Playback Device* if desired.
 
-5. **Map cards** — either via the Cards UI (action *Spotify*) or in
+2. **Map cards** — either via the Cards UI (action *Spotify*) or in
    `shared/settings/cards.yaml`:
+
    ```yaml
    '0123456789':
      package: spotify
@@ -166,6 +171,7 @@ Once connected, the card switches to the regular settings (device, second-swipe 
      method: play_card
      args: ['spotify:playlist:37i9dQZF1DXcBWIGoYBM5M']
    ```
+
    Get the URI from Spotify: right-click any track/album/playlist → *Share* → *Copy URI*.
 
 The module ships enabled in `jukebox.default.yaml` (`spotify: playerspotify` under
@@ -177,7 +183,7 @@ The module ships enabled in `jukebox.default.yaml` (`spotify: playerspotify` und
 ## RPC Methods (spotify.ctrl)
 
 | Method | Args | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | `play_card` | `uri: str` | Main RFID entry point — first/second swipe logic |
 | `play_uri` | `uri: str` | Play a Spotify URI directly (no swipe logic) |
 | `play` | — | Resume playback |
@@ -222,6 +228,107 @@ Consequences:
   published; a 2 s poll keeps it in sync while playing.
 - **Second swipe stays intuitive** — when the other backend played in between,
   a card swipe counts as first swipe again (playback restarts instead of toggling).
+
+## Automated testing without a Raspberry Pi
+
+The Spotify integration is fully autotestable on any machine — no Pi, no
+network, no Spotify account. Two complementary layers live in
+`test/playerspotify/`:
+
+- **Unit tests** (`test_player.py`, `test_auth_code.py`, `test_device_resolver.py`,
+  `test_librespot_seeder.py`) — isolated checks of individual methods with
+  `unittest.mock`.
+- **Scenario tests** (`test_spotify_scenarios.py`) — end-to-end flows against a
+  **stateful Spotify Web API emulator** (`fake_spotify.py`). The harness
+  (`conftest.py`, fixtures `spotify_env` / `make_spotify_env`) boots the *real*
+  code — the full `PlayerSpotify` constructor, the real player arbiter
+  (`components.player`), `NvManager`, `device_resolver` — and fakes only the
+  true boundaries: the Web API, OAuth, the ZMQ publisher, the status poll
+  timer, and wall-clock time.
+
+`FakeSpotify` simulates a Spotify Connect account: a music catalog
+(tracks/albums/playlists), Connect devices, and a playback session whose
+progress advances on a deterministic fake clock (`env.clock.advance(5)` moves
+playback 5 s forward, instantly). It also reproduces the Connect quirks the
+plugin has to handle, so the retry/normalization logic is exercised against
+realistic behaviour instead of canned mock returns:
+
+- a freshly seeded librespot device that is listed but rejects playback until
+  a transfer activates it (`needs_activation`, `rejected_transfers`)
+- stale device ids after a librespot restart (`remove_device` + `add_device`)
+- the negative-progress timeline bug (`progress_offset_ms`)
+
+A typical scenario reads like the user story it verifies:
+
+```python
+def test_second_swipe_toggles(spotify_env):
+    env = spotify_env
+    env.player.play_card(env.playlist_uri)   # first swipe -> plays
+    env.clock.advance(10)
+    env.player.play_card(env.playlist_uri)   # second swipe -> pauses
+    assert not env.spotify.is_playing
+    assert env.last_status()['state'] == 'pause'
+```
+
+Run with `pytest test/playerspotify` (plain `pytest` is enough — the harness
+has no jukebox runtime dependencies). The suite runs in well under a second,
+so it belongs in every pre-push check; the same tests run in the
+`pythonpackage_future3.yml` CI workflow. Manual testing on the Pi is then only
+needed for what genuinely cannot be simulated: audio output, the real
+librespot binary, and Spotify's server-side behaviour.
+
+### Real-API e2e tests (opt-in)
+
+`test_spotify_scenarios.py` proves the plugin logic; `test_e2e_real_spotify.py`
+proves Spotify still behaves the way the emulator assumes. It runs the real
+plugin against the **real Spotify Web API** — token refresh, metadata
+resolution, Connect device listing, and a full play/pause/seek card cycle.
+The tests are marked `e2e_spotify` and **skip automatically** unless
+credentials are present, so the normal test run stays offline.
+
+One-time setup (use a **dedicated Spotify Premium test account** — the
+playback tests really play on it):
+
+1. Create a Spotify Developer App (same steps as the normal jukebox setup).
+2. Run the interactive bootstrap and approve access with the test account:
+
+   ```bash
+   export SPOTIFY_E2E_CLIENT_ID=...
+   export SPOTIFY_E2E_CLIENT_SECRET=...
+   pip install spotipy
+   python test/playerspotify/e2e_token_helper.py --bootstrap
+   ```
+
+3. Store the printed refresh token (plus client id/secret) as GitHub Actions
+   secrets: `SPOTIFY_E2E_CLIENT_ID`, `SPOTIFY_E2E_CLIENT_SECRET`,
+   `SPOTIFY_E2E_REFRESH_TOKEN`. Never commit any of these values.
+
+In CI, the `spotify_e2e_v3.yml` workflow (manual dispatch + weekly schedule)
+starts a **headless librespot** inside the runner — audio piped to
+`/dev/null`, logged in via `--access-token`, exactly the mechanism the
+jukebox's librespot auto-login uses — so the account has a genuine Spotify
+Connect device and the playback cycle runs end-to-end with no Raspberry Pi.
+Without the secrets the workflow stays green with every test skipped.
+
+Locally the same tests can target any Connect device, including a real
+Phoniebox on the network:
+
+```bash
+export SPOTIFY_E2E_CLIENT_ID=... SPOTIFY_E2E_CLIENT_SECRET=... SPOTIFY_E2E_REFRESH_TOKEN=...
+export SPOTIFY_E2E_DEVICE_NAME=Phoniebox SPOTIFY_E2E_ALLOW_PLAYBACK=1
+pytest -m e2e_spotify test/playerspotify
+```
+
+Notes and caveats:
+
+- Playback tests are double-gated: they need `SPOTIFY_E2E_DEVICE_NAME` *and*
+  `SPOTIFY_E2E_ALLOW_PLAYBACK=1`; metadata/auth tests need only the credentials.
+- Spotify-owned editorial playlists (`37i9dQZF1...`) are not readable by
+  developer apps created after Nov 2024 — set `SPOTIFY_E2E_PLAYLIST_ID` to a
+  playlist owned by the test account for the playlist metadata test.
+- The real API is eventually consistent; assertions poll with generous
+  timeouts. Keep this suite out of the per-push pipeline (rate limits,
+  external flakiness) — weekly plus on-demand is the right cadence.
 
 ## Known Limitations & Future Work
 

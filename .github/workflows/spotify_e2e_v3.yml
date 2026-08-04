@@ -1,0 +1,90 @@
+# End-to-end tests against the REAL Spotify Web API.
+#
+# Opt-in: runs on manual dispatch and a weekly schedule, and only does real
+# work when the SPOTIFY_E2E_* secrets are configured (otherwise every test
+# skips and the job stays green).
+#
+# A headless librespot (audio piped to /dev/null) is started inside the
+# runner and logged into the test account with an OAuth access token — the
+# same mechanism the jukebox's librespot auto-login uses — so the account
+# has a genuine Spotify Connect device for the playback tests. No Raspberry
+# Pi involved.
+#
+# Required repository secrets (use a dedicated Spotify Premium test account):
+#   SPOTIFY_E2E_CLIENT_ID       Spotify Developer App client id
+#   SPOTIFY_E2E_CLIENT_SECRET   Spotify Developer App client secret
+#   SPOTIFY_E2E_REFRESH_TOKEN   from test/playerspotify/e2e_token_helper.py --bootstrap
+# Optional secret:
+#   SPOTIFY_E2E_PLAYLIST_ID     a playlist owned by the test account
+
+name: Spotify Real-API E2E
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly: catches Spotify-side behaviour/API changes without burning rate limit
+    - cron: '17 4 * * 1'
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    env:
+      SPOTIFY_E2E_CLIENT_ID: ${{ secrets.SPOTIFY_E2E_CLIENT_ID }}
+      SPOTIFY_E2E_CLIENT_SECRET: ${{ secrets.SPOTIFY_E2E_CLIENT_SECRET }}
+      SPOTIFY_E2E_REFRESH_TOKEN: ${{ secrets.SPOTIFY_E2E_REFRESH_TOKEN }}
+      SPOTIFY_E2E_PLAYLIST_ID: ${{ secrets.SPOTIFY_E2E_PLAYLIST_ID }}
+      SPOTIFY_E2E_DEVICE_NAME: Phoniebox CI
+      SPOTIFY_E2E_ALLOW_PLAYBACK: '1'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check e2e credentials
+        id: creds
+        run: echo "ok=${{ secrets.SPOTIFY_E2E_REFRESH_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: pip install pytest spotipy
+
+      - name: Cache librespot binary
+        if: steps.creds.outputs.ok == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/librespot
+          key: librespot-cli-${{ runner.os }}-v1
+
+      - name: Install librespot
+        if: steps.creds.outputs.ok == 'true'
+        run: |
+          if [ ! -x "$HOME/.cargo/bin/librespot" ]; then
+            sudo apt-get update
+            sudo apt-get install -y libasound2-dev
+            cargo install librespot --locked
+          fi
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Start headless Spotify Connect device
+        if: steps.creds.outputs.ok == 'true'
+        run: |
+          ACCESS_TOKEN=$(python test/playerspotify/e2e_token_helper.py --print-access-token)
+          nohup librespot \
+            --name "$SPOTIFY_E2E_DEVICE_NAME" \
+            --backend pipe --device /dev/null \
+            --access-token "$ACCESS_TOKEN" \
+            --disable-discovery \
+            --initial-volume 0 \
+            > librespot.log 2>&1 &
+          python test/playerspotify/e2e_token_helper.py \
+            --wait-device "$SPOTIFY_E2E_DEVICE_NAME" --timeout 90
+
+      - name: Run e2e tests
+        run: pytest -m e2e_spotify test/playerspotify/test_e2e_real_spotify.py
+
+      - name: Show librespot log
+        if: always() && steps.creds.outputs.ok == 'true'
+        run: cat librespot.log || true

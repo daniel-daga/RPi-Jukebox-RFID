@@ -1,10 +1,11 @@
 # RPi Jukebox RFID - Repository Overview
 
 ## Project Summary
+
 **RPi Jukebox RFID Version 3** (aka "future3") is a complete rewrite of the RFID-based jukebox system for Raspberry Pi. It's a music player that uses RFID cards to trigger playlists and control audio playback.
 
 **Current Version:** 3.7.0-alpha
-**Repository:** https://github.com/MiczFlor/RPi-Jukebox-RFID
+**Repository:** <https://github.com/MiczFlor/RPi-Jukebox-RFID>
 **Branch:** future3/develop
 
 ---
@@ -12,6 +13,7 @@
 ## Technology Stack
 
 ### Backend
+
 - **Language:** Python 3
 - **Music Player:** MPD (Music Player Daemon)
 - **Communication:**
@@ -22,10 +24,12 @@
 - **Configuration:** YAML-based configuration files
 
 ### Frontend
+
 - **Type:** Web application (details in webapp directory)
 - **Build System:** Custom bundling (see GitHub workflows)
 
 ### Hardware/Integration
+
 - **RFID Readers:** Multiple hardware support
   - RC522 (SPI)
   - PN532 (I2C)
@@ -41,7 +45,7 @@
 
 ## Project Structure
 
-```
+```text
 src/jukebox/
 ├── components/          # Pluggable hardware/feature modules
 │   ├── battery_monitor/     # Power management
@@ -83,34 +87,40 @@ docker/                 # Docker setup for development/deployment
 ## Key Components
 
 ### 1. **Core Daemon** (`src/jukebox/jukebox/daemon.py`)
+
 - Main jukebox service that orchestrates all components
 - Manages lifecycle of plugins and features
 - Handles system events and callbacks
 
 ### 2. **RFID System** (`src/jukebox/components/rfid/`)
+
 - Abstraction layer supporting multiple reader hardware
 - Card database and configuration
 - Maps physical cards to playlists/actions
 - Includes a fake GUI reader for testing without hardware
 
 ### 3. **MPD Player Integration** (`src/jukebox/components/playermpd/`)
+
 - Communicates with Music Player Daemon
 - Cover art caching
 - Playlist generation and queuing
 - Callback system for playback events
 
 ### 4. **RPC Communication** (`src/jukebox/jukebox/rpc/`)
+
 - Server for receiving commands
 - Client for making requests
 - Integration with CLI tools
 
 ### 5. **GPIO & Hardware Control** (`src/jukebox/components/gpio/`)
+
 - Custom gpioz wrapper around GPIO libraries
 - Full mock support for testing without hardware
 - Input/output device management
 - Connectivity plugins
 
 ### 6. **Configuration System** (`src/jukebox/jukebox/cfghandler.py`)
+
 - YAML-based configuration
 - Template defaults in `resources/default-settings/`
 - Runtime configuration management
@@ -120,6 +130,7 @@ docker/                 # Docker setup for development/deployment
 ## Configuration Files
 
 Key configuration templates (in `resources/default-settings/`):
+
 - `jukebox.default.yaml` - Main jukebox settings
 - `cards.example.yaml` - RFID card mapping
 - `gpio.example.yaml` - GPIO pin configuration
@@ -132,6 +143,7 @@ Key configuration templates (in `resources/default-settings/`):
 ## Development Setup
 
 ### Testing
+
 - **Test Framework:** pytest
 - **Coverage:** Tracked with .coveragerc
 - **Pre-commit Hooks:** Located in `.githooks/`
@@ -142,6 +154,7 @@ Key configuration templates (in `resources/default-settings/`):
   - CodeQL security analysis
 
 ### Docker Support
+
 - Multiple Dockerfiles for different services
 - `docker-compose.yml` for local development
 - Platform-specific compose files (Linux, Mac)
