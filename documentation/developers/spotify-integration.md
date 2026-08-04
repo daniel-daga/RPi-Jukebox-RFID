@@ -271,6 +271,59 @@ so it belongs in every pre-push check; the same tests run in the
 needed for what genuinely cannot be simulated: audio output, the real
 librespot binary, and Spotify's server-side behaviour.
 
+### Real-API e2e tests (opt-in)
+
+`test_spotify_scenarios.py` proves the plugin logic; `test_e2e_real_spotify.py`
+proves Spotify still behaves the way the emulator assumes. It runs the real
+plugin against the **real Spotify Web API** — token refresh, metadata
+resolution, Connect device listing, and a full play/pause/seek card cycle.
+The tests are marked `e2e_spotify` and **skip automatically** unless
+credentials are present, so the normal test run stays offline.
+
+One-time setup (use a **dedicated Spotify Premium test account** — the
+playback tests really play on it):
+
+1. Create a Spotify Developer App (same steps as the normal jukebox setup).
+2. Run the interactive bootstrap and approve access with the test account:
+
+   ```bash
+   export SPOTIFY_E2E_CLIENT_ID=...
+   export SPOTIFY_E2E_CLIENT_SECRET=...
+   pip install spotipy
+   python test/playerspotify/e2e_token_helper.py --bootstrap
+   ```
+
+3. Store the printed refresh token (plus client id/secret) as GitHub Actions
+   secrets: `SPOTIFY_E2E_CLIENT_ID`, `SPOTIFY_E2E_CLIENT_SECRET`,
+   `SPOTIFY_E2E_REFRESH_TOKEN`. Never commit any of these values.
+
+In CI, the `spotify_e2e_v3.yml` workflow (manual dispatch + weekly schedule)
+starts a **headless librespot** inside the runner — audio piped to
+`/dev/null`, logged in via `--access-token`, exactly the mechanism the
+jukebox's librespot auto-login uses — so the account has a genuine Spotify
+Connect device and the playback cycle runs end-to-end with no Raspberry Pi.
+Without the secrets the workflow stays green with every test skipped.
+
+Locally the same tests can target any Connect device, including a real
+Phoniebox on the network:
+
+```bash
+export SPOTIFY_E2E_CLIENT_ID=... SPOTIFY_E2E_CLIENT_SECRET=... SPOTIFY_E2E_REFRESH_TOKEN=...
+export SPOTIFY_E2E_DEVICE_NAME=Phoniebox SPOTIFY_E2E_ALLOW_PLAYBACK=1
+pytest -m e2e_spotify test/playerspotify
+```
+
+Notes and caveats:
+
+- Playback tests are double-gated: they need `SPOTIFY_E2E_DEVICE_NAME` *and*
+  `SPOTIFY_E2E_ALLOW_PLAYBACK=1`; metadata/auth tests need only the credentials.
+- Spotify-owned editorial playlists (`37i9dQZF1...`) are not readable by
+  developer apps created after Nov 2024 — set `SPOTIFY_E2E_PLAYLIST_ID` to a
+  playlist owned by the test account for the playlist metadata test.
+- The real API is eventually consistent; assertions poll with generous
+  timeouts. Keep this suite out of the per-push pipeline (rate limits,
+  external flakiness) — weekly plus on-demand is the right cadence.
+
 ## Known Limitations & Future Work
 
 - **Token expiry** — spotipy handles refresh automatically as long as a refresh token

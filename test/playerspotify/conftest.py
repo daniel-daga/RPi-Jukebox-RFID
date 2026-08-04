@@ -19,6 +19,8 @@ no sleeping, no background polling.
 
 import importlib.util
 import itertools
+import json
+import os
 import sys
 import types
 from pathlib import Path
@@ -28,6 +30,17 @@ import pytest
 _HERE = Path(__file__).resolve().parent
 _SRC = _HERE.parents[1] / 'src' / 'jukebox'
 _ENV_COUNTER = itertools.count()
+
+# Must match PlayerSpotify._scope — a cached token with a narrower scope is
+# rejected by spotipy and the plugin would fall back to the OAuth flow.
+PLUGIN_OAUTH_SCOPE = ('user-read-playback-state '
+                      'user-modify-playback-state '
+                      'user-read-currently-playing '
+                      'streaming')
+
+E2E_REQUIRED_ENV = ('SPOTIFY_E2E_CLIENT_ID',
+                    'SPOTIFY_E2E_CLIENT_SECRET',
+                    'SPOTIFY_E2E_REFRESH_TOKEN')
 
 
 def _load_module_from_path(name, path):
@@ -124,12 +137,13 @@ class SpotifyEnv:
       status_timer FakeEndlessTimer of the status poll (tick() to poll)
     """
 
-    def __init__(self, tmp_path, config_overrides=None):
+    def __init__(self, tmp_path, config_overrides=None, real_spotify=False):
         env_id = next(_ENV_COUNTER)
         self._package_name = f'playerspotify_integration_{env_id}'
+        self.real_spotify = real_spotify
 
         self.clock = fake_spotify.FakeClock()
-        self.spotify = fake_spotify.FakeSpotify(self.clock)
+        self.spotify = None if real_spotify else fake_spotify.FakeSpotify(self.clock)
         self.publisher = RecordingPublisher()
 
         config = {
@@ -141,6 +155,13 @@ class SpotifyEnv:
             'device_name': 'Phoniebox',
             'librespot': {'auto_login': False},
         }
+        if real_spotify:
+            config.update({
+                'client_id': os.environ['SPOTIFY_E2E_CLIENT_ID'],
+                'client_secret': os.environ['SPOTIFY_E2E_CLIENT_SECRET'],
+                'device_name': os.environ.get('SPOTIFY_E2E_DEVICE_NAME', 'Phoniebox'),
+            })
+            self._seed_token_cache(config['token_cache'])
         config.update(config_overrides or {})
         self.cfg = InMemoryConfig({'playerspotify': config})
 
@@ -154,6 +175,27 @@ class SpotifyEnv:
             self._restore_modules()
             raise
         self.status_timer = self._timers[0]
+        if real_spotify:
+            # Expose the real spotipy client under the same attribute the
+            # fake occupies in emulator mode
+            self.spotify = self.player._sp
+
+    @staticmethod
+    def _seed_token_cache(cache_path):
+        """Pre-seed a spotipy token cache from SPOTIFY_E2E_REFRESH_TOKEN
+
+        The access token is left empty and expired, so the very first API
+        call exercises the plugin's real refresh path.
+        """
+        with open(cache_path, 'w') as cache_file:
+            json.dump({
+                'access_token': '',
+                'token_type': 'Bearer',
+                'expires_in': 0,
+                'expires_at': 0,
+                'refresh_token': os.environ['SPOTIFY_E2E_REFRESH_TOKEN'],
+                'scope': PLUGIN_OAUTH_SCOPE,
+            }, cache_file)
 
     # -- module wiring ---------------------------------------------------
 
@@ -196,12 +238,6 @@ class SpotifyEnv:
         jukebox.multitimer = multitimer
         jukebox.publishing = publishing
 
-        spotipy = types.ModuleType('spotipy')
-        oauth2 = types.ModuleType('spotipy.oauth2')
-        spotipy.Spotify = lambda auth_manager=None: env.spotify
-        oauth2.SpotifyOAuth = fake_spotify.FakeSpotifyOAuth
-        spotipy.oauth2 = oauth2
-
         stubs = {
             'components': components,
             'jukebox': jukebox,
@@ -209,9 +245,15 @@ class SpotifyEnv:
             'jukebox.plugs': plugs,
             'jukebox.multitimer': multitimer,
             'jukebox.publishing': publishing,
-            'spotipy': spotipy,
-            'spotipy.oauth2': oauth2,
         }
+        if not self.real_spotify:
+            spotipy = types.ModuleType('spotipy')
+            oauth2 = types.ModuleType('spotipy.oauth2')
+            spotipy.Spotify = lambda auth_manager=None: env.spotify
+            oauth2.SpotifyOAuth = fake_spotify.FakeSpotifyOAuth
+            spotipy.oauth2 = oauth2
+            stubs['spotipy'] = spotipy
+            stubs['spotipy.oauth2'] = oauth2
         # Names that must import fresh (real modules) inside this environment
         fresh = ['components.player', 'jukebox.NvManager']
         touched = list(stubs) + fresh + [
@@ -233,8 +275,9 @@ class SpotifyEnv:
         module = importlib.util.module_from_spec(spec)
         sys.modules[self._package_name] = module
         spec.loader.exec_module(module)
-        # The transfer/retry path sleeps; advance the fake clock instead
-        module.time = types.SimpleNamespace(sleep=self.clock.sleep)
+        if not self.real_spotify:
+            # The transfer/retry path sleeps; advance the fake clock instead
+            module.time = types.SimpleNamespace(sleep=self.clock.sleep)
         return module
 
     def _restore_modules(self):
@@ -324,3 +367,26 @@ def spotify_env(make_spotify_env):
     """Default environment: authenticated account, 'Phoniebox' device,
     three tracks, a playlist and an album."""
     return make_spotify_env()
+
+
+@pytest.fixture
+def real_spotify_env(tmp_path):
+    """Environment against the REAL Spotify Web API (opt-in)
+
+    Skips unless spotipy is installed and the SPOTIFY_E2E_* credentials are
+    present in the environment. See the 'Automated testing' section in
+    documentation/developers/spotify-integration.md for setup.
+    """
+    try:
+        import spotipy  # noqa: F401
+    except ImportError:
+        pytest.skip('spotipy is not installed')
+    missing = [name for name in E2E_REQUIRED_ENV if not os.environ.get(name)]
+    if missing:
+        pytest.skip('Spotify e2e credentials not set: ' + ', '.join(missing))
+
+    env = SpotifyEnv(tmp_path, real_spotify=True)
+    try:
+        yield env
+    finally:
+        env.close()
