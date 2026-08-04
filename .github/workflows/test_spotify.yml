@@ -1,0 +1,28 @@
+name: Test Spotify Feature
+
+# Fast, deterministic Spotify feature tests on a plain runner:
+# no Raspberry Pi, no QEMU, no Spotify credentials, no external
+# package sources (mopidy comes from the distro archive).
+# See tests/spotify/README.md for details.
+
+on:
+  push:
+    branches-ignore:
+        - 'future3/**'
+  pull_request:
+    branches: [ develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get -y install mopidy mopidy-mpd mpc gstreamer1.0-plugins-good php-cli python3-pytest
+
+    - name: Run Spotify feature tests
+      run: ./tests/spotify/run_tests.sh
