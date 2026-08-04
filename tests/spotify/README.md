@@ -24,11 +24,13 @@ expand to several tracks, like with the real backend.
 
 That means the whole Phoniebox chain runs unmodified:
 
-    folder with spotify.txt
-      -> scripts/playlist_recursive_by_folder.php  (real, via php-cli)
-      -> .m3u in the playlists dir                 (like rfid_trigger_play.sh)
-      -> MPD protocol 'load' / 'play' / 'pause'    (like playout_controls.sh / mpc)
-      -> Mopidy core -> spotify: backend lookup & playback
+```text
+folder with spotify.txt
+  -> scripts/playlist_recursive_by_folder.php  (real, via php-cli)
+  -> .m3u in the playlists dir                 (like rfid_trigger_play.sh)
+  -> MPD protocol 'load' / 'play' / 'pause'    (like playout_controls.sh / mpc)
+  -> Mopidy core -> spotify: backend lookup & playback
+```
 
 ## What is covered
 
