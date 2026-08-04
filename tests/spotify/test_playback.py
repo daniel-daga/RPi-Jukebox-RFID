@@ -12,7 +12,7 @@ import subprocess
 
 import pytest
 
-from conftest import wait_for_state
+from conftest import wait_for_state, wait_until
 from mpd_client import quote
 from php_sandbox import make_php_sandbox
 
@@ -31,8 +31,11 @@ def test_add_and_play_spotify_track(mpd):
 
     mpd.command("play")
     wait_for_state(mpd, "play")
-    current = mpd.command_dict("currentsong")
-    assert current["file"] == "spotify:track:phonieboxtest1"
+    wait_until(
+        lambda: mpd.command_dict("currentsong").get("file")
+        == "spotify:track:phonieboxtest1",
+        "the spotify track to become the current song",
+    )
 
 
 def test_spotify_album_uri_expands_to_tracks(mpd):
@@ -67,7 +70,10 @@ def test_load_m3u_playlist_with_spotify_uris(mopidy, mpd):
 
     mpd.command("play")
     wait_for_state(mpd, "play")
-    assert mpd.command_dict("currentsong")["file"] == "spotify:track:m3utrack1"
+    wait_until(
+        lambda: mpd.command_dict("currentsong").get("file") == "spotify:track:m3utrack1",
+        "the first playlist entry to become the current song",
+    )
 
 
 def test_full_chain_php_playlist_to_mopidy_playback(tmp_path, mopidy, mpd):
@@ -92,8 +98,11 @@ def test_full_chain_php_playlist_to_mopidy_playback(tmp_path, mopidy, mpd):
 
     mpd.command("play")
     wait_for_state(mpd, "play")
-    assert mpd.command_dict("currentsong")["file"].startswith(
-        "spotify:track:fullchain42"
+    wait_until(
+        lambda: mpd.command_dict("currentsong")
+        .get("file", "")
+        .startswith("spotify:track:fullchain42"),
+        "a track of the spotify album to become the current song",
     )
 
 
@@ -113,7 +122,12 @@ def test_mpc_cli_works_like_the_shell_scripts(mopidy):
     mpc("clear")
     mpc("add", "spotify:track:mpctest1")
     mpc("play")
-    assert "[playing]" in mpc("status")
-    assert "Mock Spotify Track mpctest1" in mpc("current")
+    # 'mpc play' returns once the command is acknowledged, the player
+    # state follows asynchronously - so poll instead of asserting once
+    wait_until(lambda: "[playing]" in mpc("status"), "mpc to report [playing]")
+    wait_until(
+        lambda: "Mock Spotify Track mpctest1" in mpc("current"),
+        "mpc to report the current track",
+    )
     mpc("stop")
     mpc("clear")

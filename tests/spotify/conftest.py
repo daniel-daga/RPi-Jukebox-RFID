@@ -232,14 +232,28 @@ def mpd(mopidy):
     client.close()
 
 
-def wait_for_state(client, state, timeout=20):
+def wait_until(condition, description, timeout=20):
+    """Poll until condition() is truthy.
+
+    Mopidy acknowledges playback commands before the audio pipeline has
+    actually changed state, so anything asserting on player state has to
+    poll instead of checking once.
+    """
     deadline = time.monotonic() + timeout
+    last = None
     while time.monotonic() < deadline:
-        current = client.status().get("state")
-        if current == state:
-            return
+        last = condition()
+        if last:
+            return last
         time.sleep(0.2)
     raise AssertionError(
-        f"Player did not reach state '{state}' within {timeout}s "
-        f"(current: '{client.status().get('state')}')"
+        f"Timed out after {timeout}s waiting for {description} (last value: {last!r})"
+    )
+
+
+def wait_for_state(client, state, timeout=20):
+    wait_until(
+        lambda: client.status().get("state") == state,
+        f"player state '{state}'",
+        timeout=timeout,
     )
