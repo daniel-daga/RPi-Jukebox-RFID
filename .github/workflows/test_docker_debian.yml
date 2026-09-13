@@ -1,38 +1,46 @@
 name: Test Install Scripts Debian
 
+# Automatic triggers disabled on purpose: this workflow now only runs when
+# started manually (Actions tab -> Run workflow). The original triggers are
+# kept commented out below so they can be restored by un-commenting them
+# and removing the workflow_dispatch block.
 on:
-  schedule:
-    # run at 5:00 every sunday
-    - cron: '0 5 * * 0'
-  push:
-    branches-ignore:
-      - 'future3/**'
-    paths:
-      - '.github/workflows/test_docker_debian*.yml'
-      - 'ci/**'
-      - 'misc/sampleconfigs/**'
-      - 'scripts/helperscripts/setup_*'
-      - 'scripts/installscripts/**'
-      - 'settings/version-number'
-      - 'packages*.txt'
-      - 'requirements*.txt'
-  pull_request:
-    # The branches below must be a subset of the branches above
-    branches:
-      - develop
-      - master
-    paths:
-      - '.github/workflows/test_docker_debian*.yml'
-      - 'ci/**'
-      - 'misc/sampleconfigs/**'
-      - 'scripts/helperscripts/setup_*'
-      - 'scripts/installscripts/**'
-      - 'settings/version-number'
-      - 'packages*.txt'
-      - 'requirements*.txt'
+  workflow_dispatch:
 
-# let only one instance run the test so cache is not corrupted.
-# cancel already running instances as only the last run will be relevant
+#on:
+#  schedule:
+#    # run at 5:00 every sunday
+#    - cron: '0 5 * * 0'
+#  push:
+#    branches-ignore:
+#      - 'future3/**'
+#    paths:
+#      - '.github/workflows/test_docker_debian*.yml'
+#      - 'ci/**'
+#      - 'misc/sampleconfigs/**'
+#      - 'scripts/helperscripts/setup_*'
+#      - 'scripts/installscripts/**'
+#      - 'settings/version-number'
+#      - 'packages*.txt'
+#      - 'requirements*.txt'
+#  pull_request:
+#    # The branches below must be a subset of the branches above
+#    branches:
+#      - develop
+#      - master
+#    paths:
+#      - '.github/workflows/test_docker_debian*.yml'
+#      - 'ci/**'
+#      - 'misc/sampleconfigs/**'
+#      - 'scripts/helperscripts/setup_*'
+#      - 'scripts/installscripts/**'
+#      - 'settings/version-number'
+#      - 'packages*.txt'
+#      - 'requirements*.txt'
+
+## let only one instance run the test so cache is not corrupted.
+## cancel already running instances as only the last run will be relevant
+
 concurrency:
     group: ${{ github.ref }}-test-debian
     cancel-in-progress: true

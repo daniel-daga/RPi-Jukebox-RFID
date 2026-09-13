@@ -1,17 +1,24 @@
 name: Markdown Linting
 
+# Automatic triggers disabled on purpose: this workflow now only runs when
+# started manually (Actions tab -> Run workflow). The original triggers are
+# kept commented out below so they can be restored by un-commenting them
+# and removing the workflow_dispatch block.
 on:
-  push:
-    branches-ignore:
-        - 'future3/**'
-    paths:
-        - '**.md'
-  pull_request:
-    branches:
-        - develop
-        - master
-    paths:
-        - '**.md'
+  workflow_dispatch:
+
+#on:
+#  push:
+#    branches-ignore:
+#        - 'future3/**'
+#    paths:
+#        - '**.md'
+#  pull_request:
+#    branches:
+#        - develop
+#        - master
+#    paths:
+#        - '**.md'
 
 jobs:
   build:
