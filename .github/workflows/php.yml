@@ -1,10 +1,17 @@
 name: PHP Composer
 
+# Automatic triggers disabled on purpose: this workflow now only runs when
+# started manually (Actions tab -> Run workflow). The original triggers are
+# kept commented out below so they can be restored by un-commenting them
+# and removing the workflow_dispatch block.
 on:
-  push:
-    branches: [ develop ]
-  pull_request:
-    branches: [ develop ]
+  workflow_dispatch:
+
+#on:
+#  push:
+#    branches: [ develop ]
+#  pull_request:
+#    branches: [ develop ]
 
 permissions:
   contents: read

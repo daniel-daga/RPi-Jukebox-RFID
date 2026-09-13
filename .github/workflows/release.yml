@@ -1,9 +1,16 @@
 name: Release
 
+# Automatic triggers disabled on purpose: this workflow now only runs when
+# started manually (Actions tab -> Run workflow). The original triggers are
+# kept commented out below so they can be restored by un-commenting them
+# and removing the workflow_dispatch block.
 on:
-  push:
-    branches:
-      - 'master'
+  workflow_dispatch:
+
+#on:
+#  push:
+#    branches:
+#      - 'master'
 
 jobs:
 

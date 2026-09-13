@@ -11,14 +11,21 @@
 #
 name: "CodeQL"
 
+# Automatic triggers disabled on purpose: this workflow now only runs when
+# started manually (Actions tab -> Run workflow). The original triggers are
+# kept commented out below so they can be restored by un-commenting them
+# and removing the workflow_dispatch block.
 on:
-  push:
-    branches: [ develop ]
-  pull_request:
-    # The branches below must be a subset of the branches above
-    branches: [ develop ]
-  schedule:
-    - cron: '16 18 * * 0'
+  workflow_dispatch:
+
+#on:
+#  push:
+#    branches: [ develop ]
+#  pull_request:
+#    # The branches below must be a subset of the branches above
+#    branches: [ develop ]
+#  schedule:
+#    - cron: '16 18 * * 0'
 
 jobs:
   analyze:
